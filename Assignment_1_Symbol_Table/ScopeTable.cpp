@@ -2,30 +2,15 @@
 
 #include<iostream>
 #include"SymbolInfo.h"
+#include"hashFunctions.h"
 
 using namespace std;
 
-// hash functions
-unsigned int SDBMHash(string str) {
-    unsigned int hash = 0;
-    unsigned int i = 0;
-    unsigned int len = str.length();
-
-    for (i = 0; i < len; i++)
-    {
-        hash = (str[i]) + (hash << 6) + (hash << 16) - hash;
-    }
-
-    return hash;
-}
 
 // initializing static variable
 int ScopeTable::tableCounter = 1;
 
 // ScopeTable class implementation
-int ScopeTable::getIndex(string key){
-    return func(key) % size;
-}
 
 ScopeTable::ScopeTable(int size , int option , ScopeTable* parentScope){
     this->size = size;
@@ -33,13 +18,30 @@ ScopeTable::ScopeTable(int size , int option , ScopeTable* parentScope){
     this->parentScope = parentScope;
     this->tableNumber = tableCounter;
     tableCounter++;
+    this->collisionCount = 0;
 
     for(int i=0;i<size;i++){
         arr[i] = NULL;
     }
+
     if(option == 1){
         this->func = SDBMHash;
+    }else if(option == 2){
+        this->func = DJBHash;
+    }else if(option == 3){
+        this->func = DEKHash;
+    }else if(option == 4){
+        this->func = APHash;
+    }else if(option == 5){
+        this->func = customHashOne;
+    }else if(option == 6){
+        this->func = customHashTwo;
+    }else{
+        cout << "Invalid hash function option" << endl;
+        exit(1);
     }
+
+    cout << "\tScopeTable# " << this->tableNumber << " created" << endl;
 }
 
 ScopeTable::~ScopeTable(){
@@ -52,10 +54,23 @@ ScopeTable::~ScopeTable(){
         }
     }
     delete[] arr;
+    cout << "\tScopeTable# " << this->tableNumber << " removed" << endl;
+}
+
+int ScopeTable::getIndex(string key){
+    return (func(key) % this->size);
 }
 
 int ScopeTable::getTableNumber(){
     return this->tableNumber;
+}
+
+int ScopeTable::getCollisionCount(){
+    return this->collisionCount;
+}
+
+int ScopeTable::getSize(){
+    return this->size;
 }
 
 void ScopeTable::setParentScope(ScopeTable* parent){
@@ -78,13 +93,68 @@ SymbolInfo* ScopeTable::lookUp(string name){
     return NULL;
 }
 
+string ScopeTable::getPosition(string name){
+    int index = getIndex(name);
+    SymbolInfo* temp = arr[index];
+    int i = 1;
+    while(temp != NULL){
+        if(temp->getName() == name){
+            return "ScopeTable# " + to_string(tableNumber) + " at position " + to_string(index + 1) + ", " + to_string(i);
+        }
+        temp = temp->getNext();
+        i++;
+    }
+    return "Not found";
+}
+
+ 
+/*                      inserts at the front of the chain                       */
+
+// bool ScopeTable::insert(SymbolInfo symbol){
+//     if(lookUp(symbol.getName()) != NULL){
+//         return false;
+//     }
+//     int index = getIndex(symbol.getName());
+//     SymbolInfo* newSymbol = new SymbolInfo(symbol.getName(), symbol.getType(), arr[index]);
+//     arr[index] = newSymbol;
+
+//     // collision count
+//     if(arr[index]->getNext() != NULL){
+//         cout<<"Collision occurred at index " << index << " in ScopeTable #" << tableNumber << endl;
+//         this->collisionCount++;
+//     }
+//     return true;
+// }
+
+
+/*                      inserts at the end of the chain                       */
+
 bool ScopeTable::insert(SymbolInfo symbol){
     if(lookUp(symbol.getName()) != NULL){
         return false;
     }
+
     int index = getIndex(symbol.getName());
-    SymbolInfo* newSymbol = new SymbolInfo(symbol.getName(), symbol.getType(), arr[index]);
-    arr[index] = newSymbol;
+    SymbolInfo* temp = arr[index];
+    if(temp != NULL){
+        collisionCount++;
+        //cout << "Collision occurred at index " << index << " in ScopeTable #" << tableNumber << endl;
+    }
+
+    while(temp != NULL){
+        if(temp->getNext() == NULL){
+            break;
+        }
+        temp = temp->getNext();
+    }
+    SymbolInfo* newSymbol = new SymbolInfo(symbol.getName(), symbol.getType(), NULL);
+
+    if(temp == NULL){
+        arr[index] = newSymbol;
+    } else {
+        temp->setNext(newSymbol);
+    }
+
     return true;
 }
 
@@ -111,9 +181,9 @@ bool ScopeTable::deleteSymbol(string name){
 void ScopeTable::printScopeTable(int n){
     string tabs(n, '\t');
 
-    cout << tabs << "Scope Table #" << tableNumber << endl;
+    cout << tabs << "ScopeTable# " << tableNumber << endl;
     for(int i=0;i<size;i++){
-        cout << tabs << i + 1 << " --> ";
+        cout << tabs << i + 1 << "--> ";
         SymbolInfo* temp = arr[i];
         while(temp != NULL){
             cout << "<" << temp->getName() << "," << temp->getType() << "> ";

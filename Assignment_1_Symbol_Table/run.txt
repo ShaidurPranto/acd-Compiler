@@ -1,0 +1,14 @@
+
+///////compile report_generator
+
+g++ report_generator.cpp SymbolTable.cpp ScopeTable.cpp hashFunctions.cpp SymbolInfo.cpp -o program
+
+g++ -g -fsanitize=address report_generator.cpp SymbolTable.cpp ScopeTable.cpp hashFunctions.cpp SymbolInfo.cpp -o program
+
+
+/////////compile main
+
+g++ main.cpp SymbolTable.cpp ScopeTable.cpp hashFunctions.cpp SymbolInfo.cpp -o program
+
+g++ -g -fsanitize=address main.cpp SymbolTable.cpp ScopeTable.cpp hashFunctions.cpp SymbolInfo.cpp -o program
+

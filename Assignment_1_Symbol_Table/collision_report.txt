@@ -1,0 +1,22 @@
+Collision Report
+Total 78 symbols inserted (26 in each scope)
+Number of Scopes: 3
+ScopeTable Size: 16
+----------------------------------------------------------
+
+Hash Function: SDBMHash      , Total collision : 41
+Hash Function: DJBHash       , Total collision : 46
+Hash Function: DEKHash       , Total collision : 48
+Hash Function: APHash        , Total collision : 38
+Hash Function: Custom Hash   , Total collision : 66
+Hash Function: Custom Hash 2 , Total collision : 75
+----------------------------------------------------------
+
+Hash Function: SDBMHash      , Average Collision Ratio: 0.64
+Hash Function: DJBHash       , Average Collision Ratio: 0.72
+Hash Function: DEKHash       , Average Collision Ratio: 0.75
+Hash Function: APHash        , Average Collision Ratio: 0.59
+Hash Function: Custom Hash   , Average Collision Ratio: 1.03
+Hash Function: Custom Hash 2 , Average Collision Ratio: 1.17
+----------------------------------------------------------
+

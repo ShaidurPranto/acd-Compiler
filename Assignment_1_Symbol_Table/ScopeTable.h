@@ -7,18 +7,17 @@
 
 using namespace std;
 
-// hash functions
-unsigned int SDBMHash(string str);
-
-
 class ScopeTable{
 
     SymbolInfo** arr;
     int size;
-    unsigned int (*func)(string);
+    unsigned long long (*func)(string);  // hash function pointer
     ScopeTable* parentScope;
+
     static int tableCounter;
+
     int tableNumber;
+    int collisionCount;
 
     int getIndex(string key);
 
@@ -30,17 +29,23 @@ class ScopeTable{
 
     int getTableNumber();
 
+    int getCollisionCount();
+
+    int getSize();
+
     void setParentScope(ScopeTable* parent);
     
     ScopeTable* getParentScope() ;
 
     SymbolInfo* lookUp(string name);
 
+    string getPosition(string name); // if found , returns a string 'ScopeTable# _ at position _ , _' , else 'Not found'
+
     bool insert(SymbolInfo symbol);
 
     bool deleteSymbol(string name);
 
-    void printScopeTable(int n);
+    void printScopeTable(int n = 1);
 
 };
 

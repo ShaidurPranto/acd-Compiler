@@ -8,7 +8,7 @@ using namespace std;
 class SymbolInfo {
     string name;
     string type;
-    SymbolInfo* next;
+    SymbolInfo* next; // points to next symbol of the chain
 
 public:
     SymbolInfo(string name, string type, SymbolInfo* next = NULL);
