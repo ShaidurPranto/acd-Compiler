@@ -24,11 +24,12 @@ void testSymbolTable(SymbolTable& st, int numberOfScopes, int sizeOfEachScope) {
 }
 
 int main() {
-    const int numberOfScopes = 3;
-    const int sizeOfEachScope = 26;
+    const int numberOfScopesToCreate = 7;
+    const int numberOfSymbolToInsertInEachScope = 23;
+
     const int sizeOfEachTable = 16;
 
-    const int totalSymbols = numberOfScopes * sizeOfEachScope;
+    const int totalSymbols = numberOfScopesToCreate * numberOfSymbolToInsertInEachScope;
 
     SymbolTable st1(sizeOfEachTable, 1); // SDBMHash
     SymbolTable st2(sizeOfEachTable, 2); // DJBHash
@@ -37,19 +38,19 @@ int main() {
     SymbolTable st5(sizeOfEachTable, 5); // Custom Hash
     SymbolTable st6(sizeOfEachTable, 6); // Custom Hash 2
 
-    testSymbolTable(st1, numberOfScopes, sizeOfEachScope);
-    testSymbolTable(st2, numberOfScopes, sizeOfEachScope);
-    testSymbolTable(st3, numberOfScopes, sizeOfEachScope);
-    testSymbolTable(st4, numberOfScopes, sizeOfEachScope);
-    testSymbolTable(st5, numberOfScopes, sizeOfEachScope);
-    testSymbolTable(st6, numberOfScopes, sizeOfEachScope);
+    testSymbolTable(st1, numberOfScopesToCreate, numberOfSymbolToInsertInEachScope);
+    testSymbolTable(st2, numberOfScopesToCreate, numberOfSymbolToInsertInEachScope);
+    testSymbolTable(st3, numberOfScopesToCreate, numberOfSymbolToInsertInEachScope);
+    testSymbolTable(st4, numberOfScopesToCreate, numberOfSymbolToInsertInEachScope);
+    testSymbolTable(st5, numberOfScopesToCreate, numberOfSymbolToInsertInEachScope);
+    testSymbolTable(st6, numberOfScopesToCreate, numberOfSymbolToInsertInEachScope);
 
     ofstream out("collision_report.txt");
     if (out.is_open()) {
         out << fixed << setprecision(2);
         out << "Collision Report" << endl;
-        out << "Total " << totalSymbols << " symbols inserted (" << sizeOfEachScope << " in each scope)" << endl;
-        out << "Number of Scopes: " << numberOfScopes << endl;
+        out << "Total " << totalSymbols << " symbols inserted (" << numberOfSymbolToInsertInEachScope << " in each scope)" << endl;
+        out << "Number of Scopes: " << numberOfScopesToCreate << endl;
         out << "ScopeTable Size: " << sizeOfEachTable << endl;
 
         out << "----------------------------------------------------------" << endl << endl;

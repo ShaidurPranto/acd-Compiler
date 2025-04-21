@@ -11,7 +11,7 @@ class ScopeTable{
 
     SymbolInfo** arr;
     int size;
-    unsigned long long (*func)(string);  // hash function pointer
+    unsigned int (*func)(string, int);  // hash function pointer
     ScopeTable* parentScope;
 
     static int tableCounter;

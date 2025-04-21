@@ -23,7 +23,7 @@ int countWords(const string& input) {
 
 int main() {
     freopen("sample_input.txt", "r", stdin);
-    freopen("output_new.txt", "w", stdout);
+    freopen("my_output.txt", "w", stdout);
 
     int size;
     cin >> size;

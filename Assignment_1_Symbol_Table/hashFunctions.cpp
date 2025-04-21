@@ -1,79 +1,88 @@
-#include"hashFunctions.h"
+#include "hashFunctions.h"
 
-#include<iostream>
-#include<string>
+#include <iostream>
+#include <string>
 
 using namespace std;
 
 // hash functions
-unsigned long long SDBMHash(string str) {
-	unsigned long long hash = 0;
-	unsigned long long i = 0;
-	unsigned long long len = str.length();
+unsigned int SDBMHash(string str, int size)
+{
+    unsigned int hash = 0;
 
-	for (i = 0; i < len; i++)
-	{
-		hash = (str[i]) + (hash << 6) + (hash << 16) - hash;
-	}
+    unsigned int len = str.length();
 
-	return hash;
+    for (unsigned int i = 0; i < len; i++)
+    {
+        hash = ((str[i]) + (hash << 6) + (hash << 16) - hash) % size;
+    }
+
+    return hash;
 }
 
-unsigned long long DJBHash(string str) {
+unsigned int DJBHash(string str, int size) 
+{
     unsigned long long hash = 5381;
     unsigned long long i = 0;
     unsigned long long len = str.length();
 
     for (i = 0; i < len; i++)
     {
-        hash = ((hash << 5) + hash) + str[i]; 
+        hash = ((hash << 5) + hash) + str[i];
     }
 
-    return hash;
+    return hash % size;
 }
 
-unsigned long long DEKHash(string str) {
+unsigned int DEKHash(string str, int size)
+{
     unsigned long long hash = 0;
     unsigned long long i = 0;
     unsigned long long len = str.length();
 
     for (i = 0; i < len; i++)
     {
-        hash = ((hash << 5) ^ (hash >> 27)) ^ str[i]; 
+        hash = ((hash << 5) ^ (hash >> 27)) ^ str[i];
     }
 
-    return hash;
+    return hash % size;
 }
 
-unsigned long long APHash(string str) {
+unsigned int APHash(string str, int size)
+{
     unsigned long long hash = 0;
     unsigned long long i = 0;
     unsigned long long len = str.length();
 
-    for (i = 0; i < len; i++) {
-        if ((i & 1) == 0) {
+    for (i = 0; i < len; i++)
+    {
+        if ((i & 1) == 0)
+        {
             hash ^= ((hash << 7) ^ str[i] ^ (hash >> 3));
-        } else {
+        }
+        else
+        {
             hash ^= (~((hash << 11) + str[i] + (hash >> 5)));
         }
     }
-    return hash;
+    return hash % size;
 }
 
-unsigned long long customHashOne(string str) {
-    unsigned long long hash = 1;
+unsigned int customHashOne(string str, int size)
+{
+    unsigned long long hash = 0;
     unsigned long long i = 0;
     unsigned long long len = str.length();
 
     for (i = 0; i < len; i++)
     {
-        hash = hash * 31 * str[i];
+        hash += str[i];
     }
 
-    return hash;
+    return hash % size;
 }
 
-unsigned long long customHashTwo(string str) {
-    return 100;
+unsigned int customHashTwo(string str, int size)
+{
+    return 100 % size;
 }
-

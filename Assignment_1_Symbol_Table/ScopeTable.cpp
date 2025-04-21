@@ -58,7 +58,7 @@ ScopeTable::~ScopeTable(){
 }
 
 int ScopeTable::getIndex(string key){
-    return (func(key) % this->size);
+    return func(key, this->size);
 }
 
 int ScopeTable::getTableNumber(){

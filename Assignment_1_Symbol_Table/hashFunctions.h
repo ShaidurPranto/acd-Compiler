@@ -7,11 +7,11 @@
 
 using namespace std;
 
-unsigned long long SDBMHash(string str);
-unsigned long long DJBHash(string str);
-unsigned long long DEKHash(string str);
-unsigned long long APHash(string str);
-unsigned long long customHashOne(string str);
-unsigned long long customHashTwo(string str);
+unsigned int SDBMHash(string str, int size);
+unsigned int DJBHash(string str, int size);
+unsigned int DEKHash(string str , int size);
+unsigned int APHash(string str , int size);
+unsigned int customHashOne(string str , int size);
+unsigned int customHashTwo(string str, int size);
 
 #endif
