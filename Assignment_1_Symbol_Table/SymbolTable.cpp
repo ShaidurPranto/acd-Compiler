@@ -11,6 +11,9 @@ SymbolTable::SymbolTable(int size , int option){
     currentScope = NULL;
     this->option = option;
     this->size = size;
+    this->deletedCollisions = 0;
+    this->deletedTableCounts = 0;
+    this->deletedCollisionRatio = 0.0;
 
     enterScope();
 }
@@ -32,6 +35,11 @@ void SymbolTable::exitScope(){
     if(currentScope->getTableNumber()>1){
         ScopeTable* temp = currentScope;
         currentScope = currentScope->getParentScope();
+
+        this->deletedCollisions += temp->getCollisionCount();
+        this->deletedCollisionRatio = (this->deletedCollisionRatio * this->deletedTableCounts + temp->getCollisionRatio()) / (this->deletedTableCounts + 1);
+        this->deletedTableCounts++;
+
         delete temp;
     }
 }
@@ -94,13 +102,31 @@ int SymbolTable::getTotalCollisions(){
 }
 
 double SymbolTable::getCollisionRatio(){
-    double totalCollisions = 0;
-    double totalSize = 0;
+    double totalCollisionRatio = 0.0;
+    int tableCount = 0;
     ScopeTable* temp = currentScope;
     while(temp != NULL){
-        totalCollisions += temp->getCollisionCount();
-        totalSize += temp->getSize();
+        totalCollisionRatio += temp->getCollisionRatio();
+        tableCount++;
         temp = temp->getParentScope();
     }
-    return totalCollisions / totalSize;
+    return totalCollisionRatio / tableCount;
+}
+
+int SymbolTable::getInclusiveTotalCollisions(){
+    return this->getTotalCollisions() + this->deletedCollisions;
+}
+
+int SymbolTable::getActiveNumberOfScopes(){
+    int tableCount = 0;
+    ScopeTable* temp = currentScope;
+    while(temp != NULL){
+        tableCount++;
+        temp = temp->getParentScope();
+    }
+    return tableCount;
+}
+
+double SymbolTable::getInclusiveCollisionRatio(){
+    return ((getCollisionRatio() * getActiveNumberOfScopes()) + (this->deletedCollisionRatio * this->deletedTableCounts)) / (getActiveNumberOfScopes() + this->deletedTableCounts);
 }

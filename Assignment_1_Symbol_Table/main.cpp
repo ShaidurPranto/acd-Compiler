@@ -21,15 +21,60 @@ int countWords(const string& input) {
     return count;
 }
 
-int main() {
-    freopen("sample_input.txt", "r", stdin);
-    freopen("my_output.txt", "w", stdout);
+
+void printReport(SymbolTable& symbolTable , int hashFunctionOption) {
+    if(hashFunctionOption == 1) {
+        cout << "Hash Function: SDBMHash" << endl;
+    } else if(hashFunctionOption == 2) {
+        cout << "Hash Function: DJBHash" << endl;
+    } else if(hashFunctionOption == 3) {
+        cout << "Hash Function: DEKHash" << endl;
+    } else if(hashFunctionOption == 4) {
+        cout << "Hash Function: APHash" << endl;
+    } else if(hashFunctionOption == 5) {
+        cout << "Hash Function: customHashOne" << endl;
+    } else if(hashFunctionOption == 6) {
+        cout << "Hash Function: customHashTwo" << endl;
+    }
+
+    cout << "Total number of collisions: " << symbolTable.getInclusiveTotalCollisions() << endl;
+    cout << "Collision ratio: " << symbolTable.getInclusiveCollisionRatio() << endl;
+}
+
+// g++ main.cpp SymbolTable.cpp ScopeTable.cpp hashFunctions.cpp SymbolInfo.cpp -o program 
+// ./program sample_input.txt my_output.txt 1
+
+
+int main(int argc , char* argv[]) {
+
+    string inputFile = argv[1];
+    string outputFile = argv[2];
+    int hashFunctionOption = 1;
+    if(argc == 4){
+        int choice = atoi(argv[3]);
+        if (choice < 1 || choice > 6) {
+            cerr << "Error: Invalid hash function option. Please choose between 1 and 6." << endl;
+            return 1;
+        }
+        hashFunctionOption = choice;
+    }
+
+    ifstream file(inputFile);
+    if (!file) {
+        cerr << "Error: Input file not found." << endl;
+        return 1;
+    }
+
+    file.close();
+    
+    freopen(inputFile.c_str(), "r", stdin);
+    freopen(outputFile.c_str(), "w", stdout);
 
     int size;
     cin >> size;
     cin.ignore(); 
 
-    SymbolTable symbolTable(size);
+    SymbolTable symbolTable(size, hashFunctionOption);
 
     string line;
     int lineCount = 0;
@@ -168,6 +213,10 @@ int main() {
                     cout << "\tNumber of parameters mismatch for the command Q" << endl;
                     break;
                 }
+
+                freopen("/dev/tty", "w", stdout);
+                printReport(symbolTable, hashFunctionOption);
+
                 return 0;
             }
             default:

@@ -73,6 +73,11 @@ int ScopeTable::getSize(){
     return this->size;
 }
 
+double ScopeTable::getCollisionRatio(){
+    double ratio = (double)this->collisionCount / (double)this->size;
+    return ratio;
+}
+
 void ScopeTable::setParentScope(ScopeTable* parent){
     this->parentScope = parent;
 }
@@ -138,7 +143,7 @@ bool ScopeTable::insert(SymbolInfo symbol){
     SymbolInfo* temp = arr[index];
     if(temp != NULL){
         collisionCount++;
-        //cout << "Collision occurred at index " << index << " in ScopeTable #" << tableNumber << endl;
+        cout << "Collision occurred at index " << index << " in ScopeTable #" << tableNumber << endl;
     }
 
     while(temp != NULL){

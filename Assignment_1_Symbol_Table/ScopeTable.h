@@ -15,9 +15,10 @@ class ScopeTable{
     ScopeTable* parentScope;
 
     static int tableCounter;
-
     int tableNumber;
+
     int collisionCount;
+
 
     int getIndex(string key);
 
@@ -32,6 +33,8 @@ class ScopeTable{
     int getCollisionCount();
 
     int getSize();
+
+    double getCollisionRatio(); // returns total number of collisions in this scope / size of this scope
 
     void setParentScope(ScopeTable* parent);
     

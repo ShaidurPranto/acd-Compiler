@@ -11,8 +11,12 @@ using namespace std;
 class SymbolTable{
     
     ScopeTable* currentScope;
-    int option; // hash function option
+    int option; // hash function option (1-6) : 1 = SDBMHash , 2 = DJBHash , 3 = DEKHash , 4 = APHash , 5 = customHashOne , 6 = customHashTwo
     int size; // size of the symbol table 
+
+    int deletedCollisions; // total number of collisions in deleted scopes
+    int deletedTableCounts; // total number of deleted scopes
+    double deletedCollisionRatio; // average collision ratio of deleted scopes
     
     public:
 
@@ -35,10 +39,17 @@ class SymbolTable{
     void printCurrentScopeTable();
 
     void printAllScopeTables();
+    
 
     int getTotalCollisions(); // returns total number of collisions in all scopes
 
-    double getCollisionRatio(); // returns total number of collisions in all scopes / total number of symbols in all scopes
+    double getCollisionRatio(); // returns total number of collisions in all scopes / total size of all scopes
+
+    int getInclusiveTotalCollisions(); // returns total number of collisions in all scopes including deleted scopes
+
+    int getActiveNumberOfScopes(); // returns total number of active scopes
+
+    double getInclusiveCollisionRatio(); // returns total number of collisions in all scopes including deleted scopes / total size of all scopes including deleted scopes
 };
 
 #endif

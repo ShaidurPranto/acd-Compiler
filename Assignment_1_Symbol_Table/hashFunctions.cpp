@@ -84,5 +84,6 @@ unsigned int customHashOne(string str, int size)
 
 unsigned int customHashTwo(string str, int size)
 {
-    return 100 % size;
+    //return 100 % size;
+    return 0;
 }
