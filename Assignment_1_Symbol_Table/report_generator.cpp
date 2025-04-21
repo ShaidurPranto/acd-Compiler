@@ -23,6 +23,9 @@ void testSymbolTable(SymbolTable& st, int numberOfScopes, int sizeOfEachScope) {
     }
 }
 
+// g++ report_generator.cpp SymbolTable.cpp ScopeTable.cpp hashFunctions.cpp SymbolInfo.cpp -o program 
+// ./program
+
 int main() {
     const int numberOfScopesToCreate = 7;
     const int numberOfSymbolToInsertInEachScope = 23;
