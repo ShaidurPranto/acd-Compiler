@@ -1,204 +1,26 @@
-Line no 1: Token <CONST_FLOAT> Lexeme 127.0 found
+Error at line no 1: Too many decimal points 127.0.0.1
+Error at line no 2: Ill formed number 23E-1.2
+Error at line no 3: Ill formed number 5E7.2
+Error at line no 4: Invalid prefix on ID or invalid suffix on Number 123_bcd
+Error at line no 5: Multi character constant error 'na'
+Error at line no 6: Unterminated character '\t
+Error at line no 7: Unterminated character '
+Error at line no 8: Multi character constant error 'ab cd'
+Error at line no 9: Unterminated character '\'
+Error at line no 10: Empty character constant error ''
+Error at line no 11: Unterminated string "abcd
+Error at line no 12: Unterminated string "efgh\"
+Error at line no 13: Unterminated string "abcd\
+efgh
+Line no 15: Token <ID> Lexeme ijk found
 	ScopeTable# 1
-	5--> <127.0 : CONST_FLOAT> 
-Line no 1: Token <CONST_FLOAT> Lexeme .0 found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> 
-Line no 1: Token <CONST_FLOAT> Lexeme .1 found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> 
-Line no 2: Token <CONST_FLOAT> Lexeme 23E-1 found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> 
-	7--> <23E-1 : CONST_FLOAT> 
-Line no 2: Token <CONST_FLOAT> Lexeme .2 found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> 
-	3--> <.2 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> 
-	7--> <23E-1 : CONST_FLOAT> 
-Line no 3: Token <CONST_FLOAT> Lexeme 5E7 found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> 
-	3--> <.2 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 3: Token <CONST_FLOAT> Lexeme .2 found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> 
-	3--> <.2 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 4: Token <CONST_INT> Lexeme 123 found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> 
-	3--> <.2 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 4: Token <ID> Lexeme _bcd found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 5: Token <ID> Lexeme na found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 5: Token <CONST_CHAR> Lexeme '
-' found --> <CONST_CHAR, 
->
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> 
-	6--> <'
-' : CONST_CHAR> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 5: Token <ID> Lexeme t found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> 
-	6--> <'
-' : CONST_CHAR> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 6: Token <CONST_CHAR> Lexeme '
-' found --> <CONST_CHAR, 
->
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> 
-	6--> <'
-' : CONST_CHAR> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 6: Token <ID> Lexeme ab found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 6: Token <ID> Lexeme cd found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 6: Token <CONST_CHAR> Lexeme '
-' found --> <CONST_CHAR, 
->
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 6: Token <CONST_CHAR> Lexeme '
-' found --> <CONST_CHAR, 
->
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 7: Token <ID> Lexeme abcd found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	4--> <abcd : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 8: Token <ID> Lexeme efgh found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> <efgh : ID> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	4--> <abcd : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 9: Token <ID> Lexeme abcd found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> <efgh : ID> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	4--> <abcd : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 10: Token <ID> Lexeme efgh found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> <efgh : ID> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	4--> <abcd : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 11: Token <ID> Lexeme ijk found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> <efgh : ID> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	4--> <abcd : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> <ijk : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 13: Token <MULOP> Lexeme / found
-Line no 13: Token <MULOP> Lexeme * found
-Line no 13: Token <MULOP> Lexeme * found
-Line no 13: Token <ID> Lexeme abc found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> <efgh : ID> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	4--> <abcd : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> <ijk : ID> <abc : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
-Line no 14: Token <ID> Lexeme def found
-	ScopeTable# 1
-	1--> <.0 : CONST_FLOAT> <efgh : ID> 
-	2--> <.1 : CONST_FLOAT> <_bcd : ID> 
-	3--> <.2 : CONST_FLOAT> <na : ID> 
-	4--> <abcd : ID> 
-	5--> <127.0 : CONST_FLOAT> <123 : CONST_INT> <t : ID> <cd : ID> <ijk : ID> <abc : ID> <def : ID> 
-	6--> <'
-' : CONST_CHAR> <ab : ID> 
-	7--> <23E-1 : CONST_FLOAT> <5E7 : CONST_FLOAT> 
+	5--> <ijk : ID> 
+Error at line no 15: Unterminated string "
+Error at line no 16: Unrecognized character #
+Error at line no 16: Unrecognized character $
+Error at line no 16: Unrecognized character @
+Error at line no 17: Unterminated comment /**abc
+def
+
+Total lines: 19
+Total errors: 18

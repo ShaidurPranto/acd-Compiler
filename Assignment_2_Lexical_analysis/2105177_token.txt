@@ -1,5 +1,1 @@
-<CONST_FLOAT, 127.0> <CONST_FLOAT, .0> <CONST_FLOAT, .1> <CONST_FLOAT, 23E-1> <CONST_FLOAT, .2> <CONST_FLOAT, 5E7> <CONST_FLOAT, .2> <CONST_INT, 123> <ID, _bcd> <ID, na> <CONST_CHAR, 
-> <ID, t> <CONST_CHAR, 
-> <ID, ab> <ID, cd> <CONST_CHAR, 
-> <CONST_CHAR, 
-> <ID, abcd> <ID, efgh> <ID, abcd> <ID, efgh> <ID, ijk> <MULOP, /> <MULOP, *> <MULOP, *> <ID, abc> <ID, def> 
+<ID, ijk> 
