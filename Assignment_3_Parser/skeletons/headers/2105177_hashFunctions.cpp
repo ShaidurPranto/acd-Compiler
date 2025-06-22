@@ -1,24 +1,11 @@
-#ifndef HASH_FUNCTIONS_H
-#define HASH_FUNCTIONS_H
+#include "2105177_hashFunctions.h"
 
-#include <string>
 #include <iostream>
+#include <string>
 
 using namespace std;
 
-unsigned int SDBMHash(string str, int size);
-unsigned int DJBHash(string str, int size);
-unsigned int DEKHash(string str , int size);
-unsigned int APHash(string str , int size);
-unsigned int customHashOne(string str , int size);
-unsigned int customHashTwo(string str, int size);
-
-
-
-// implmentations 
-
-
-
+// hash functions
 unsigned int SDBMHash(string str, int size)
 {
     unsigned int hash = 0;
@@ -27,10 +14,10 @@ unsigned int SDBMHash(string str, int size)
 
     for (unsigned int i = 0; i < len; i++)
     {
-        hash = ((str[i]) + (hash << 6) + (hash << 16) - hash);
+        hash = ((str[i]) + (hash << 6) + (hash << 16) - hash) % size;
     }
 
-    return hash % size;
+    return hash;
 }
 
 unsigned int DJBHash(string str, int size) 
@@ -100,7 +87,3 @@ unsigned int customHashTwo(string str, int size)
     //return 100 % size;
     return 0;
 }
-
-
-
-#endif

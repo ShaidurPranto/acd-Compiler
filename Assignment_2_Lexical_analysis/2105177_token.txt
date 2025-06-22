@@ -1,1 +1,1 @@
-<ID, ijk> 
+<ID, i> <ID, j> <ID, j> <ASSIGNOP, => <CONST_INT, 990> <SEMICOLON, ;> 

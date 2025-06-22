@@ -1,66 +1,11 @@
-#ifndef SCOPETABLE_H
-#define SCOPETABLE_H
+#include"2105177_ScopeTable.h"
 
-#include <string>
-#include <iostream>
-#include <fstream>
-
-#include "2105177_SymbolInfo.hpp"
-#include "2105177_hashFunctions.hpp"
+#include<iostream>
+#include<fstream>
+#include"2105177_SymbolInfo.h"
+#include"2105177_hashFunctions.h"
 
 using namespace std;
-
-class ScopeTable{
-
-    SymbolInfo** arr;
-    int size;
-    unsigned int (*func)(string, int);  // hash function pointer
-    ScopeTable* parentScope;
-
-    static int tableCounter;
-    int tableNumber;
-
-    int collisionCount;
-
-
-    int getIndex(string key);
-
-    public:
-
-    ScopeTable(int size , int option = 1 , ScopeTable* parentScope = NULL);
-
-    ~ScopeTable();
-
-    int getTableNumber();
-
-    int getCollisionCount();
-
-    int getSize();
-
-    double getCollisionRatio(); // returns total number of collisions in this scope / size of this scope
-
-    void setParentScope(ScopeTable* parent);
-    
-    ScopeTable* getParentScope() ;
-
-    SymbolInfo* lookUp(string name);
-
-    string getPosition(string name); // if found , returns a string 'ScopeTable# _ at position _ , _' , else 'Not found'
-
-    bool insert(SymbolInfo symbol);
-
-    bool deleteSymbol(string name);
-
-    void printScopeTable(int n = 1);
-
-    void printNonEmptyScopeTable(ofstream &fout);
-
-};
-
-
-
-// implementations
-
 
 
 // initializing static variable
@@ -155,20 +100,12 @@ SymbolInfo* ScopeTable::lookUp(string name){
 }
 
 string ScopeTable::getPosition(string name){
-    string numbering = "";
-    for(int i=0;i<tableNumber;i++){
-        numbering += "1";
-        if(i < tableNumber - 1){
-            numbering += ".";
-        }
-    }
-    
     int index = getIndex(name);
     SymbolInfo* temp = arr[index];
     int i = 1;
     while(temp != NULL){
         if(temp->getName() == name){
-            return "ScopeTable# " + numbering + " at position " + to_string(index) + ", " + to_string(i-1);
+            return "ScopeTable# " + to_string(tableNumber) + " at position " + to_string(index + 1) + ", " + to_string(i);
         }
         temp = temp->getNext();
         i++;
@@ -198,9 +135,9 @@ string ScopeTable::getPosition(string name){
 
 /*                      inserts at the end of the chain                       */
 
-bool ScopeTable::insert(SymbolInfo symbol){
+SymbolInfo* ScopeTable::insert(SymbolInfo symbol){
     if(lookUp(symbol.getName()) != NULL){
-        return false;
+        return NULL;
     }
 
     int index = getIndex(symbol.getName());
@@ -224,7 +161,7 @@ bool ScopeTable::insert(SymbolInfo symbol){
         temp->setNext(newSymbol);
     }
 
-    return true;
+    return newSymbol;
 }
 
 bool ScopeTable::deleteSymbol(string name){
@@ -262,7 +199,6 @@ void ScopeTable::printScopeTable(int n){
     }
 }
 
-
 void ScopeTable::printNonEmptyScopeTable(ofstream &fout){
     string numbering = "";
     for(int i=0;i<tableNumber;i++){
@@ -286,6 +222,3 @@ void ScopeTable::printNonEmptyScopeTable(ofstream &fout){
         }
     }
 }
-
-
-#endif

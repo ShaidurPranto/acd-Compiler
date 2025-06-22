@@ -1,0 +1,4 @@
+{
+“name”: “alice”,
+“address”: { “city”: “sylhet”, “phone”: “01234” }
+}
