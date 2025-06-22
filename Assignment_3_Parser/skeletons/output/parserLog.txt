@@ -289,6 +289,8 @@ Line 9: unary_expression : factor
 
 Line 9: term : term MULOP unary_expression
 
+Error at line 9: Non-Integer operand on modulus operator
+
 2%3.7
 
 Line 9: simple_expression : term
@@ -304,8 +306,6 @@ Line 9: logic_expression : rel_expression
 2%3.7
 
 Line 9: expression : variable ASSIGNOP logic_expression
-
-Error at line 9: Type mismatch
 
 j=2%3.7
 
@@ -326,6 +326,8 @@ i=2.3;
 j=2%3.7;
 
 Line 10: variable : ID
+
+Error at line 10: Type mismatch a is an array
 
 a
 
@@ -375,6 +377,8 @@ j=2%3.7;
 a=4;
 
 Line 11: variable : ID
+
+Error at line 11: Type mismatch a is an array
 
 a
 
@@ -458,6 +462,8 @@ func(a);
 
 Line 12: variable : ID
 
+Error at line 12: Identifier b not declared
+
 b
 
 Line 12: factor : CONST_INT
@@ -485,8 +491,6 @@ Line 12: logic_expression : rel_expression
 8
 
 Line 12: expression : variable ASSIGNOP logic_expression
-
-Error at line 12: Type mismatch
 
 b=8
 
@@ -638,4 +642,4 @@ return 0;
 }
 
 Total number of lines: 14
-Total number of errors: 5
+Total number of errors: 7
