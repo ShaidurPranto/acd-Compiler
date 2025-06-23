@@ -177,11 +177,20 @@ public:
   		}
   	}
 
-  	void declareFunction(std::string returnType, std::string functionName, param_list params) {
+  	bool isInParamList(std::string name, param_list params) {
+  		for (Variable var : params.get_param()) {
+  			if (var.name == name) {
+  				return true;
+  			}
+  		}
+  		return false;
+  	}
+
+  	void declareFunction(std::string returnType, std::string functionName, param_list params, std::string line) {
   		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(functionName);
   		if(symbol != NULL) {
-  			writeIntoparserLogFile("Error: Function " + functionName + " already declared\n");
-  			writeIntoErrorFile("Error: Function " + functionName + " already declared\n");
+  			writeIntoparserLogFile("Error at line " + line + ": Function " + functionName + " already declared\n");
+  			writeIntoErrorFile("Error at line " + line + ": Function " + functionName + " already declared\n");
   			syntaxErrorCount++;
   		} else {
   			symbol = symbolTable.insert(functionName, "ID");
@@ -210,23 +219,26 @@ public:
   		return true;
   	}
 
-  	void defineFunction(std::string returnType, std::string functionName, param_list params) {
+  	void defineFunction(std::string returnType, std::string functionName, param_list params, std::string line) {
   		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(functionName);
+  		if(symbol == NULL) {
+  			symbol = symbolTable.lookUp(functionName);
+  		}
+
   		if(symbol != NULL) {
   			if(symbol->id.isDefined) {
-  				writeIntoparserLogFile("Error: Function " + functionName + " already defined\n");
-  				writeIntoErrorFile("Error: Function " + functionName + " already defined\n");
+  				writeIntoparserLogFile("Error at line " + line + ": Function " + functionName + " already defined\n");
+  				writeIntoErrorFile("Error at line " + line + ": Function " + functionName + " already defined\n");
   				syntaxErrorCount++;
   				return;
   			} else if(symbol->id.isDeclared) {
-  				// check if return type matches
   				if(symbol->id.returnType != toUpper(returnType)) {
-  					writeIntoparserLogFile("Error: Function " + functionName + " return type mismatch\n");
-  					writeIntoErrorFile("Error: Function " + functionName + " return type mismatch\n");
+  					writeIntoparserLogFile("Error at line " + line + ": return type mismatch of " + functionName + "\n");
+  					writeIntoErrorFile("Error at line " + line + ": return type mismatch of " + functionName + "\n");
   					syntaxErrorCount++;
   				} else if(!isParameterListEqual(symbol->id.parameters, params)) {
-  					writeIntoparserLogFile("Error: Function " + functionName + " parameter list mismatch\n");
-  					writeIntoErrorFile("Error: Function " + functionName + " parameter list mismatch\n");
+  					writeIntoparserLogFile("Error at line " + line + ": parameter list mismatch of " + functionName + "\n");
+  					writeIntoErrorFile("Error at line " + line + ": parameter list mismatch of " + functionName + "\n");
   					syntaxErrorCount++;
   				}
   			}
@@ -247,17 +259,17 @@ public:
   		params = parameters;
   		insertParam = true;
 
-  		symbolTable.enterScope();
-  		for (auto &param : params.get_param()) {
-  			if (symbolTable.lookUpInCurrentScope(param.name) != NULL) {
-  				writeIntoparserLogFile("Error at line " + line + ": Duplicate parameter name " + param.name + "\n");
-  				writeIntoErrorFile("Error at line " + line + ": Duplicate parameter name " + param.name + "\n");
-  				syntaxErrorCount++;
-  			}else {
-  				SymbolInfo* symbol = symbolTable.insert(param.name, "ID");
-  			}
-  		}
-  		symbolTable.exitScope();
+  		// symbolTable.enterScope();
+  		// for (auto &param : params.get_param()) {
+  		// 	if (symbolTable.lookUpInCurrentScope(param.name) != NULL) {
+  		// 		writeIntoparserLogFile("Error at line " + line + ": Duplicate parameter name " + param.name + "\n");
+  		// 		writeIntoErrorFile("Error at line " + line + ": Duplicate parameter name " + param.name + "\n");
+  		// 		syntaxErrorCount++;
+  		// 	}else {
+  		// 		SymbolInfo* symbol = symbolTable.insert(param.name, "ID");
+  		// 	}
+  		// }
+  		// symbolTable.exitScope();
   	}
 
   	void clearParam() {
