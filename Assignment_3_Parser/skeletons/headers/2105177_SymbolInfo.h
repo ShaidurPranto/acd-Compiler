@@ -9,32 +9,42 @@ using namespace std;
 // data types 
 // INT
 // FLOAT
+// BOOL
 
-class Parameters {
+struct Variable {
+    string name = "EMPTY";
+    string type = "EMPTY";
+};
+
+class param_list {
 private:
-    vector<string> variables;
+    vector<Variable> variables;
 
 public:
     // Constructor
-    Parameters() = default;
+    param_list() = default;
 
     // getters and setters
-    const vector<string>& get_parameters() const {
+    const vector<Variable>& get_param() const {
         return variables;
     }
 
-    void set_parameters(const vector<string>& vars) {
+    void set_param(const vector<Variable>& vars) {
         variables = vars;
     }
 
     // Add a string to the list
-    void add(const std::string& str) {
-        variables.emplace_back(str);
+    void add(const Variable& var) {
+        variables.emplace_back(var);    
     }
 
     // Get the size of the list
-    std::string size() const {
-        return std::to_string(variables.size());
+    int size() const {
+        return variables.size();
+    }
+
+    void clear() {
+        variables.clear();
     }
 };
 
@@ -43,10 +53,11 @@ struct Identifier {
     string idType = "EMPTY";
     bool isArray = false;
     int arraySize = 0;
-    int isFunction = 0;
-    int isDeclared = 0;
+    bool isFunction = false;
+    bool isDeclared = false;
+    bool isDefined = false;
     string returnType = "EMPTY";
-    Parameters parameters;
+    param_list parameters;
 };
 
 class SymbolInfo {   

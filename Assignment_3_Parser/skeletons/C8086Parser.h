@@ -65,6 +65,14 @@ public:
   antlr4::atn::SerializedATNView getSerializedATN() const override;
 
 
+  	// data types 
+  	// INT
+  	// FLOAT
+  	// BOOL
+
+  	bool insertParam = false;
+  	param_list params;
+
       void writeIntoparserLogFile(const std::string message) {
           if (!parserLogFile) {
               std::cout << "Error opening parserLogFile.txt" << std::endl;
@@ -99,7 +107,7 @@ public:
   		return true;
   	}
 
-  	SymbolInfo* checkAndInsertID(const std::string ID, const std::string line, bool isArray = false, int arraySize = 0) {
+  	SymbolInfo* checkAndInsertIDVar(const std::string ID, const std::string line, bool isArray = false, int arraySize = 0) {
   		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(ID);
   		if(symbol != NULL) {
   			writeIntoparserLogFile("Error at line " + line + ": Multiple declaration of " + ID + "\n");
@@ -167,6 +175,182 @@ public:
   				writeIntoparserLogFile("Symbol name: " + name + "\n");
   			}
   		}
+  	}
+
+  	void declareFunction(std::string returnType, std::string functionName, param_list params) {
+  		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(functionName);
+  		if(symbol != NULL) {
+  			writeIntoparserLogFile("Error: Function " + functionName + " already declared\n");
+  			writeIntoErrorFile("Error: Function " + functionName + " already declared\n");
+  			syntaxErrorCount++;
+  		} else {
+  			symbol = symbolTable.insert(functionName, "ID");
+  			if(symbol != NULL) {
+  				symbol->id.idName = functionName;
+  				symbol->id.idType = toUpper(returnType);
+  				symbol->id.isFunction = true;
+  				symbol->id.isDeclared = true;
+  				symbol->id.returnType = toUpper(returnType);
+  				symbol->id.parameters = params;
+  			}
+  		}
+  	}
+
+  	bool isParameterListEqual(param_list params1, param_list params2) {
+  		if (params1.size() != params2.size()) {
+  			return false;
+  		}
+  		vector<Variable> p1 = params1.get_param();
+  		vector<Variable> p2 = params2.get_param();
+  		for (int i = 0; i < p1.size(); ++i) {
+  			if (p1[i].name != p2[i].name) {
+  				return false;
+  			}
+  		}
+  		return true;
+  	}
+
+  	void defineFunction(std::string returnType, std::string functionName, param_list params) {
+  		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(functionName);
+  		if(symbol != NULL) {
+  			if(symbol->id.isDefined) {
+  				writeIntoparserLogFile("Error: Function " + functionName + " already defined\n");
+  				writeIntoErrorFile("Error: Function " + functionName + " already defined\n");
+  				syntaxErrorCount++;
+  				return;
+  			} else if(symbol->id.isDeclared) {
+  				// check if return type matches
+  				if(symbol->id.returnType != toUpper(returnType)) {
+  					writeIntoparserLogFile("Error: Function " + functionName + " return type mismatch\n");
+  					writeIntoErrorFile("Error: Function " + functionName + " return type mismatch\n");
+  					syntaxErrorCount++;
+  				} else if(!isParameterListEqual(symbol->id.parameters, params)) {
+  					writeIntoparserLogFile("Error: Function " + functionName + " parameter list mismatch\n");
+  					writeIntoErrorFile("Error: Function " + functionName + " parameter list mismatch\n");
+  					syntaxErrorCount++;
+  				}
+  			}
+  		} else {
+  			symbol = symbolTable.insert(functionName, "ID");
+  			if(symbol != NULL) {
+  				symbol->id.idName = functionName;
+  				symbol->id.idType = toUpper(returnType);
+  				symbol->id.isFunction = true;
+  				symbol->id.isDefined = true;
+  				symbol->id.returnType = toUpper(returnType);
+  				symbol->id.parameters = params;
+  			}
+  		}
+  	}
+
+  	void setParam(std::string line, param_list parameters) {
+  		params = parameters;
+  		insertParam = true;
+
+  		symbolTable.enterScope();
+  		for (auto &param : params.get_param()) {
+  			if (symbolTable.lookUpInCurrentScope(param.name) != NULL) {
+  				writeIntoparserLogFile("Error at line " + line + ": Duplicate parameter name " + param.name + "\n");
+  				writeIntoErrorFile("Error at line " + line + ": Duplicate parameter name " + param.name + "\n");
+  				syntaxErrorCount++;
+  			}else {
+  				SymbolInfo* symbol = symbolTable.insert(param.name, "ID");
+  			}
+  		}
+  		symbolTable.exitScope();
+  	}
+
+  	void clearParam() {
+  		params.clear();
+  		insertParam = false;
+  	}
+
+  	void checkParam() {
+  		if (insertParam) {
+  			if (params.size() > 0) {
+  				for (auto param : params.get_param()) {
+  					SymbolInfo* symbol = symbolTable.insert(param.name, "ID");
+  					if (symbol != NULL) {
+  						symbol->id.idName = param.name;
+  						symbol->id.idType = param.type;
+  					}
+  				}
+  			}
+  			clearParam();
+  		}
+  	}
+
+  	void enterScope() {
+  		symbolTable.enterScope();
+  		checkParam();
+  	}
+
+  	void printAll() {
+  		symbolTable.printAllNonEmptyScopeTables(parserLogFile);
+  	}
+
+  	void exitScope() {
+  		printAll();
+  		symbolTable.exitScope();
+  	}
+
+  	bool doesArgumentMatch(param_list params1, param_list params2) {
+  		if (params1.size() != params2.size()) {
+  			return false;
+  		}
+  		vector<Variable> p1 = params1.get_param();
+  		vector<Variable> p2 = params2.get_param();
+  		for (int i = 0; i < p1.size(); ++i) {
+  			if (toUpper(p1[i].type) != toUpper(p2[i].type)) {
+  				return false;
+  			}
+  		}
+  		return true;
+  	}
+
+  	std::string callFunctionInExpression(std::string functionName, param_list args, std::string line) {
+  		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(functionName);
+  		if(symbol == NULL) {
+  			symbol = symbolTable.lookUp(functionName);
+  		}
+
+  		if(symbol == NULL || !symbol->id.isFunction) {
+  			writeIntoparserLogFile("Error at line " + line + ": " + functionName + " not declared\n");
+  			writeIntoErrorFile("Error at line " + line + ": " + functionName + " not declared\n");
+  			syntaxErrorCount++;
+  			return "EMPTY";
+  		}
+  		if(!doesArgumentMatch(symbol->id.parameters, args)) {
+  			writeIntoparserLogFile("Error at line " + line + ": " + functionName + " 's argument not matched\n");
+  			writeIntoErrorFile("Error at line " + line + ": " + functionName + " 's argument not matched\n");
+  			syntaxErrorCount++;
+  			return "EMPTY";
+  		}
+  		if(symbol->id.returnType == "VOID" || symbol->id.returnType == "void") {
+  			writeIntoparserLogFile("Error at line " + line + ": " + functionName + " 's return type is void\n");
+  			writeIntoErrorFile("Error at line " + line + ": " + functionName + " 's return type is void\n");
+  			syntaxErrorCount++;
+  			return "EMPTY";			
+  		}
+  		return symbol->id.returnType;
+  	}
+
+  	void assignment(Identifier variable, Identifier expression, std::string line) {
+  		if(variable.idType == expression.idType){
+  			return;
+  		}
+
+  		writeIntoparserLogFile("VARIABLE IDENTIFIER:\n");
+  		printIdentifier(variable);
+  		writeIntoparserLogFile("LOGIC EXPRESSION IDENTIFIER:\n");
+  		printIdentifier(expression);
+
+  		if(variable.idType == "FLOAT" && expression.idType == "INT"){
+  			return;
+  		}
+  		syntaxErrorCount++;
+  		writeIntoErrorFile("Error at line " + line + ": Type mismatch" + "\n");
+  		writeIntoparserLogFile("Error at line " + line + ": Type mismatch" + "\n");
   	}
 
 
@@ -334,6 +518,7 @@ public:
   public:
     std::string text;
     std::string line;
+    param_list list;
     C8086Parser::Parameter_listContext *pl = nullptr;
     C8086Parser::Type_specifierContext *ts = nullptr;
     antlr4::Token *idToken = nullptr;
@@ -514,6 +699,7 @@ public:
   public:
     std::string text;
     std::string line;
+    Identifier id;
     C8086Parser::Logic_expressionContext *le = nullptr;
     C8086Parser::VariableContext *v = nullptr;
     antlr4::Token *assignopToken = nullptr;
@@ -701,6 +887,7 @@ public:
   public:
     std::string text;
     std::string line;
+    param_list list;
     C8086Parser::ArgumentsContext *a = nullptr;
     Argument_listContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
@@ -717,6 +904,7 @@ public:
   public:
     std::string text;
     std::string line;
+    param_list list;
     C8086Parser::ArgumentsContext *a = nullptr;
     C8086Parser::Logic_expressionContext *le = nullptr;
     antlr4::Token *commaToken = nullptr;
