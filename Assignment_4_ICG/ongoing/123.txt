@@ -1,0 +1,587 @@
+parser grammar C8086Parser;
+
+options {
+    tokenVocab = C8086Lexer;
+}
+
+@parser::header {
+    #include <iostream>
+    #include <fstream>
+    #include <string>
+    #include <cstdlib>
+    #include "C8086Lexer.h"
+	#include "./headers/2105177_SymbolTable.h"
+	#include "./headers/util.cpp"
+	#include "./headers/2105177_SymbolInfo.h"
+
+	extern std::ofstream codeFile;
+	extern std::ofstream optCodeFile;
+	extern std::ofstream tempFile;
+	extern std::string tempFileName;
+
+	extern SymbolTable symbolTable;
+}
+
+@parser::members {
+	bool isDebug = true;
+	int stackMemberCount;
+
+	void writeIntoCodeFile(const std::string& code) {
+		if (!codeFile) {
+			std::cout << "Error opening codeFile.txt" << std::endl;
+			return;
+		}
+		codeFile << code;
+		codeFile.flush();
+	}
+	void writeIntoOptCodeFile(const std::string& code) {
+		if (!optCodeFile) {
+			std::cout << "Error opening optCodeFile.txt" << std::endl;
+			return;
+		}
+		optCodeFile << code;
+		optCodeFile.flush();
+	}
+	void writeIntoTempFile(const std::string& code) {
+		if (!tempFile) {
+			std::cout << "Error opening tempFile.txt" << std::endl;
+			return;
+		}
+		tempFile << code;
+		tempFile.flush();
+	}
+	std::string getComment(std::string line) {
+		std::string code = "    ; Line " + line;
+		return code;
+	}
+
+	void initializeCodeFile() {
+		std::string templateCode = ".MODEL SMALL\n.STACK 1000H\n.DATA\n    number DB \"00000$\"\n";
+		writeIntoCodeFile(templateCode);
+	}
+	void initializeTempFile() {
+		std::string templateCode = ".CODE\n";
+		writeIntoTempFile(templateCode);
+	}
+	void finalizeTempFile() {
+		std::string part1 = "new_line proc\n    push ax\n    push dx\n    mov ah,2\n    mov dl,0Dh\n    int 21h\n";
+		writeIntoTempFile(part1);
+
+		std::string part2 = "    mov ah,2\n    mov dl,0Ah\n    int 21h\n    pop dx\n    pop ax\n    ret\nnew_line endp\n";
+		writeIntoTempFile(part2);
+
+		std::string part3 = "print_output proc  ;print what is in ax\n    push ax\n    push bx\n    push cx\n    push dx\n    push si\n    lea si,number\n    mov bx,10\n    add si,4\n    cmp ax,0\n    jnge negate\nprint:\n    xor dx,dx\n    div bx\n    mov [si],dl\n    add [si],'0'\n    dec si\n    cmp ax,0\n    jne print\n    inc si\n    lea dx,si\n    mov ah,9\n    int 21h\n";
+		writeIntoTempFile(part3);
+
+		std::string part4 = "    pop si\n    pop dx\n    pop cx\n    pop bx\n    pop ax\n    ret\nnegate:\n    push ax\n    mov ah,2\n    mov dl,'-'\n    int 21h\n    pop ax\n    neg ax\n    jmp print\nprint_output endp\n\nEND\n";
+		writeIntoTempFile(part4);
+	}
+	void mergeTempFileToCodeFile() {
+		std::ifstream tempFile(tempFileName, std::ios::in | std::ios::binary);
+		if (!tempFile) {
+			std::cout << "Error opening tempFile.txt" << std::endl;
+			return;
+		}
+
+		tempFile.seekg(0, std::ios::end);
+		size_t size = tempFile.tellg();
+		tempFile.seekg(0, std::ios::beg);
+
+		std::string code(size, '\0');
+		tempFile.read(&code[0], size);
+
+		tempFile.close();
+		writeIntoCodeFile(code);
+	}
+	void initializeDataSegment() {
+		std::string dataSegment = "    ;initialize data segment\n    MOV AX, @DATA\n    MOV DS, AX\n";
+		writeIntoTempFile(dataSegment);
+	}
+	void preserveBasePointer() {
+		std::string code;
+		code = "	;preserve base pointer\n"; writeIntoTempFile(code);
+		code = "    PUSH BP\n    MOV BP, SP\n"; writeIntoTempFile(code);
+	}
+	void restoreBasePointer() {
+		std::string code;
+		code = "	;restore base pointer\n"; writeIntoTempFile(code);
+		code = "    POP BP\n"; writeIntoTempFile(code);
+	}
+	void initializeFunction(const std::string &functionName) {
+		if (functionName == "main") {
+			initializeDataSegment();
+		}
+		preserveBasePointer();
+	}
+	void exitMainFunction() {
+		std::string code = "    ;exit program\n    MOV AX,4CH\n    INT 21H\n";
+		writeIntoTempFile(code);
+	}
+
+	void enterScope() {
+		stackMemberCount = 0;
+		symbolTable.enterScope();
+	}
+
+	void exitScope() {
+		std::string code;
+		code = "	;restore stack pointer\n"; writeIntoTempFile(code);
+		for(int i = 0; i < stackMemberCount; i++) {
+			code = "    ADD SP, 2\n"; writeIntoTempFile(code);
+		}
+		symbolTable.exitScope(); 
+	}
+
+	bool isGlobalScope() {
+		return symbolTable.isRootScope();
+	}
+	
+	void preserveTemporaryRegisters() {
+		std::string code = "    PUSH AX\n    PUSH BX\n    PUSH CX\n    PUSH DX\n";
+		writeIntoTempFile(code);
+	}
+
+	void restoreTemporaryRegisters() {
+		std::string code = "    POP DX\n    POP CX\n    POP BX\n    POP AX\n";
+		writeIntoTempFile(code);
+	}
+
+	void debug(std::string message) {
+		if (isDebug) {
+			std::string code = "	;DEBUG: " + message + "\n";
+			writeIntoTempFile(code);
+		}
+	}
+	void printIdentifier(Identifier id) {
+		debug("Name: " + id.idName + "\n");
+		debug("Type: " + id.idType + "\n");
+		debug("Is Global: " + std::string(id.isGlobal ? "true" : "false") + "\n");
+		debug("Is Array: " + std::string(id.isArray ? "true" : "false") + "\n");
+		debug("Array Size: " + std::to_string(id.arraySize) + "\n");
+		debug("Array Index: " + id.arrayIndex + "\n");
+		debug("Constant Value: " + id.constValue + "\n");
+		debug("Stack Offset: " + std::to_string(id.stackOffset) + "\n");
+		debug("Is In Stack: " + std::string(id.isInStack ? "true" : "false") + "\n");
+	}
+
+	void globalVariableDeclaration(Identifier id, std::string line) {
+		SymbolInfo* symbol = symbolTable.insert(id.idName, "ID");
+		if (symbol != NULL) {
+			symbol->id = id;
+			symbol->id.isGlobal = true;
+		}
+
+		int size = 1;
+		if (id.isArray) {
+			size = id.arraySize;
+		}
+		std::string code = "    " + id.idName + " DW " + std::to_string(size) + " DUP (0000H)" + getComment(line) + "\n";
+		writeIntoCodeFile(code);
+	}
+	void localVariableDeclaration(Identifier id, std::string line) {
+		SymbolInfo* symbol = symbolTable.insert(id.idName, "ID");
+		if (symbol != NULL) {
+			symbol->id = id;
+			symbol->id.isGlobal = false;
+			if(id.isArray) {
+				for(int i = 0; i < id.arraySize; i++) {
+					symbol->id.stackOffset = 2 * stackMemberCount;
+					stackMemberCount++;
+					std::string code = "    SUB SP, 2"+ getComment(line) +"\n";
+					writeIntoTempFile(code);
+				}
+			} else {
+				symbol->id.stackOffset = 2 * stackMemberCount;
+				stackMemberCount++;
+				std::string code = "    SUB SP, 2" + getComment(line) + "\n";
+				writeIntoTempFile(code);
+			}
+		}
+	}
+	void variableDeclaration(std::string type, identifier_list ids, std::string line) {
+		for (auto id : ids.get_identifiers()) {
+			id.idType = type;
+			if (isGlobalScope()) {
+				globalVariableDeclaration(id, line);
+			} else {
+				localVariableDeclaration(id, line);
+			}
+		}
+	}
+
+	std::string identifierAddress(Identifier id) {
+		std::string address = "";
+		if(id.constValue != "EMPTY") {
+			address = id.constValue;
+			return address;
+		}
+
+		if (id.isGlobal) {
+			if (id.isArray) {
+				address = id.idName + "[" + id.arrayIndex + "]";
+			} else {
+				address = id.idName;
+			}
+		} else {
+			if (id.isArray) {
+				// need to update this later
+				int total_offset = std::stoi(id.arrayIndex) * 2 + id.stackOffset;
+				address = "[BP - "  + std::to_string(total_offset) + "]";
+			} else {
+				address = "[BP - "  + std::to_string(id.stackOffset) + "]";
+			}
+		}
+		return address;
+	}
+	void printVariable(Identifier id, std::string line) {
+		std::string code = "    PUSH AX" + getComment(line) + "\n"; 
+		writeIntoTempFile(code);
+		code = "    MOV AX, " + identifierAddress(id) + getComment(line) + "\n";
+		writeIntoTempFile(code);
+		code = "    CALL print_output" + getComment(line) + "\n";
+		writeIntoTempFile(code);
+		code = "    CALL new_line" + getComment(line) + "\n";
+		writeIntoTempFile(code);
+		code = "	POP AX" + getComment(line) + "\n";
+		writeIntoTempFile(code);
+	}
+
+	void assignVariable(Identifier var, Identifier value, std::string line) {
+		std::string code;
+		if(value.isInStack) {
+			code = "    POP AX" + getComment(line) + "\n"; 
+			writeIntoTempFile(code);
+			if(var.isGlobal) {
+				code = "    MOV " + identifierAddress(var) + ", AX" + getComment(line) + "\n";
+			} else {
+				code = "    MOV WORD PTR " + identifierAddress(var) + ", AX" + getComment(line) + "\n";
+			}
+			writeIntoTempFile(code); 
+		} else {
+			if(var.isGlobal) {
+				code = "    MOV " + identifierAddress(var) + ", " + identifierAddress(value) + getComment(line) + "\n";  
+			} else {
+				code = "    MOV WORD PTR " + identifierAddress(var) + ", " + identifierAddress(value) + getComment(line) + "\n";  
+			}
+			writeIntoTempFile(code);
+		}
+	}
+
+	void addIdentifier(Identifier left, Identifier right, std::string line) {
+		std::string code;
+		if(right.isInStack) {
+			code = "    POP BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}
+
+		if(left.isInStack) {
+			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}		
+
+		code = "    ADD AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+	}
+	void concatenatingAddMul(Identifier left, Identifier right, std::string line, std::string operation) {
+		std::string code;
+		if(right.isInStack) {
+			code = "    POP BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}
+
+		if(left.isInStack) {
+			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}		
+
+		if(operation == "+") {
+			code = "    ADD AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		} else if(operation == "-") {
+			code = "    SUB AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		} else if(operation == "*") {
+			code = "    MUL BL" + getComment(line) + "\n"; writeIntoTempFile(code);
+		} else if(operation == "%") {
+			code = "    DIV BL" + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "    XOR CX, CX" + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "    MOV CL, AH" + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "    MOV AX, CX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}
+		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+	}
+	void subIdentifier(Identifier left, Identifier right, std::string line) {
+		std::string code;
+		if(right.isInStack) {
+			code = "    POP BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}
+
+		if(left.isInStack) {
+			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}		
+		
+		code = "    SUB AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+	}
+	void mulIdentifier(Identifier left, Identifier right, std::string line) {
+		std::string code;
+		if(left.isInStack) {
+			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}
+		code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    MUL BL" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+	}
+	void modIdentifier(Identifier left, Identifier right, std::string line) {
+		std::string code;
+		if(left.isInStack) {
+			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		}else {
+			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
+		}
+		code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    DIV BL" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    XOR CX, CX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    MOV CL, AH" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    MOV AX, CX" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+	}	
+
+	
+}
+
+start :
+    { initializeCodeFile(); initializeTempFile(); }p = program {
+        finalizeTempFile();
+        mergeTempFileToCodeFile();
+    }
+;
+
+program :
+    program unit
+    | unit
+;
+
+unit :
+    var_declaration
+    | func_declaration
+    | func_definition
+;
+
+type_specifier returns [std::string type] :
+    INT { $type = "INT"; }
+    | FLOAT { $type = "FLOAT"; }
+    | VOID  { $type = "VOID"; }
+;
+
+declaration_list returns [identifier_list ids] :
+    dl = declaration_list COMMA ID {
+        $ids = $dl.ids;
+		Identifier id;
+		id.idName = $ID->getText();
+        $ids.add(id);
+    }
+    | dl = declaration_list COMMA ID LTHIRD CONST_INT RTHIRD {
+		$ids = $dl.ids;
+		Identifier id;
+		id.idName = $ID->getText();
+		id.isArray = true;
+		id.arraySize = std::stoi($CONST_INT->getText());
+		$ids.add(id);
+	}
+    | ID {
+		Identifier id;
+		id.idName = $ID->getText();
+		$ids.add(id);
+	}
+    | ID LTHIRD CONST_INT RTHIRD {
+		Identifier id;
+		id.idName = $ID->getText();
+		id.isArray = true;
+		id.arraySize = std::stoi($CONST_INT->getText());
+		$ids.add(id);
+	}
+;
+
+var_declaration :
+    t = type_specifier dl = declaration_list sm = SEMICOLON {
+		variableDeclaration($t.type, $dl.ids, to_string($sm->getLine()));
+	}
+;
+
+parameter_list :
+    parameter_list COMMA type_specifier ID
+    | parameter_list COMMA type_specifier
+    | type_specifier ID
+    | type_specifier
+;
+
+func_declaration :
+    type_specifier ID LPAREN parameter_list RPAREN SEMICOLON
+    | type_specifier ID LPAREN RPAREN SEMICOLON
+;
+
+func_definition :
+    type_specifier ID{writeIntoTempFile($ID->getText() + " PROC\n");} LPAREN parameter_list RPAREN {initializeFunction($ID->getText());} compound_statement {
+		restoreBasePointer();
+		writeIntoTempFile($ID->getText() + " ENDP\n\n");
+	}
+    | type_specifier ID{writeIntoTempFile($ID->getText() + " PROC\n");} LPAREN RPAREN {initializeFunction($ID->getText());} compound_statement {
+		restoreBasePointer();
+		if ($ID->getText() == "main") {
+			exitMainFunction();
+		}
+		writeIntoTempFile($ID->getText() + " ENDP\n\n");
+	}
+;
+
+compound_statement :
+    LCURL{enterScope();} statements RCURL {
+		exitScope();
+	}
+    | LCURL RCURL
+;
+
+statements :
+    statement
+    | statements statement
+;
+
+statement :
+    var_declaration
+    | expression_statement
+    | compound_statement
+    | FOR LPAREN expression_statement expression_statement expression RPAREN statement
+    | IF LPAREN expression RPAREN statement
+    | IF LPAREN expression RPAREN statement ELSE statement
+    | WHILE LPAREN expression RPAREN statement
+    | PRINTLN LPAREN ID RPAREN SEMICOLON {
+		Identifier id;
+		SymbolInfo* symbol = symbolTable.lookUp($ID->getText());
+		if (symbol != NULL) {
+			id = symbol->id;
+			printVariable(id, to_string($PRINTLN->getLine()));
+		}else {
+			std::cerr << "Error: Variable '" << $ID->getText() << "' not declared." << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+    | RETURN expression SEMICOLON
+;
+
+expression_statement :
+    SEMICOLON
+    | expression SEMICOLON
+;
+
+expression returns [Identifier id] :
+    logic_expression {
+		$id = $logic_expression.id;
+	}
+    | v = variable ASSIGNOP le = logic_expression {
+		assignVariable($v.id, $le.id, to_string($ASSIGNOP->getLine()));
+	}
+;
+
+logic_expression returns [Identifier id] :
+    rel_expression {
+        $id = $rel_expression.id;
+    }
+    | rel_expression LOGICOP rel_expression {
+    }
+;
+
+rel_expression returns [Identifier id] :
+    simple_expression {
+		$id = $simple_expression.id;
+	}
+    | simple_expression RELOP simple_expression {
+	}
+;
+
+simple_expression returns [Identifier id] :
+    term {
+        $id = $term.id;
+    }
+    | se = simple_expression ADDOP t = term {
+		concatenatingAddMul($se.id, $t.id, to_string($ADDOP->getLine()), $ADDOP->getText());
+		$id.isInStack = true;
+	}
+;
+
+term returns [Identifier id] :
+    ue = unary_expression {
+		$id = $ue.id;
+	}
+    | t = term MULOP ue = unary_expression {
+		concatenatingAddMul($t.id, $ue.id, to_string($MULOP->getLine()), $MULOP->getText());
+		$id.isInStack = true;
+	}
+;
+
+unary_expression returns [Identifier id] :
+    ADDOP unary_expression
+    | NOT unary_expression
+    | factor {
+		$id = $factor.id;
+	}
+;
+
+factor returns [Identifier id] :
+    variable {
+		$id = $variable.id;
+	}
+    | ID LPAREN argument_list RPAREN
+    | LPAREN expression RPAREN
+    | CONST_INT {
+		Identifier id;
+		id.constValue = $CONST_INT->getText();
+		$id = id;
+	}
+    | CONST_FLOAT
+    | variable INCOP
+    | variable DECOP
+;
+
+variable returns [Identifier id] :
+    ID {
+		SymbolInfo* symbol = symbolTable.lookUp($ID->getText());
+		if (symbol != NULL) {
+			$id = symbol->id;
+		}
+		else {
+			std::cerr << "Error: Variable '" << $ID->getText() << "' not declared." << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+    | ID LTHIRD e = expression RTHIRD {
+		SymbolInfo* symbol = symbolTable.lookUp($ID->getText());
+		if (symbol != NULL) {
+			$id = symbol->id;
+			$id.isArray = true;
+			$id.arrayIndex = $e.id.constValue; 
+		}
+		else {
+			std::cerr << "Error: Variable '" << $ID->getText() << "' not declared." << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+;
+
+argument_list :
+    arguments
+    |
+;
+
+arguments :
+    arguments COMMA logic_expression
+    | logic_expression
+;

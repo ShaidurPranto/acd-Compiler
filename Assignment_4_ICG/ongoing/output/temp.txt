@@ -12,33 +12,52 @@ main PROC
     SUB SP, 2    ; Line 4
     SUB SP, 2    ; Line 4
     SUB SP, 2    ; Line 4
-    MOV AX, 3    ; Line 6
-    MOV BX, 4    ; Line 6
-    MUL BL    ; Line 6
-    PUSH AX    ; Line 6
-    POP AX    ; Line 6
-    MOV BX, 2    ; Line 6
-    MUL BL    ; Line 6
-    PUSH AX    ; Line 6
-    POP AX    ; Line 6
-    MOV BX, 5    ; Line 6
-    ADD AX, BX    ; Line 6
-    PUSH AX    ; Line 6
-    POP AX    ; Line 6
-    MOV BX, 6    ; Line 6
-    ADD AX, BX    ; Line 6
-    PUSH AX    ; Line 6
-    POP AX    ; Line 6
-    MOV BX, 7    ; Line 6
-    ADD AX, BX    ; Line 6
-    PUSH AX    ; Line 6
-    POP AX    ; Line 6
-    MOV i, AX    ; Line 6
+    MOV i, 1    ; Line 6
     PUSH AX    ; Line 7
     MOV AX, i    ; Line 7
     CALL print_output    ; Line 7
     CALL new_line    ; Line 7
 	POP AX    ; Line 7
+    MOV BX, 8    ; Line 9
+    MOV AX, 5    ; Line 9
+    ADD AX, BX    ; Line 9
+    PUSH AX    ; Line 9
+    POP AX    ; Line 9
+    MOV j, AX    ; Line 9
+    PUSH AX    ; Line 10
+    MOV AX, j    ; Line 10
+    CALL print_output    ; Line 10
+    CALL new_line    ; Line 10
+	POP AX    ; Line 10
+    MOV BX, j    ; Line 12
+    MOV AX, 2    ; Line 12
+    MUL BL    ; Line 12
+    PUSH AX    ; Line 12
+    POP BX    ; Line 12
+    MOV AX, i    ; Line 12
+    ADD AX, BX    ; Line 12
+    PUSH AX    ; Line 12
+    POP AX    ; Line 12
+    MOV WORD PTR [BP - 0], AX    ; Line 12
+    PUSH AX    ; Line 13
+    MOV AX, [BP - 0]    ; Line 13
+    CALL print_output    ; Line 13
+    CALL new_line    ; Line 13
+	POP AX    ; Line 13
+    MOV BX, 9    ; Line 15
+    MOV AX, [BP - 0]    ; Line 15
+    DIV BL    ; Line 15
+    XOR CX, CX    ; Line 15
+    MOV CL, AH    ; Line 15
+    MOV AX, CX    ; Line 15
+    PUSH AX    ; Line 15
+    POP AX    ; Line 15
+    MOV WORD PTR [BP - 4], AX    ; Line 15
+    PUSH AX    ; Line 16
+    MOV AX, [BP - 4]    ; Line 16
+    CALL print_output    ; Line 16
+    CALL new_line    ; Line 16
+	POP AX    ; Line 16
 	;restore stack pointer
     ADD SP, 2
     ADD SP, 2
