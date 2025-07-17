@@ -57,6 +57,7 @@ struct Identifier {
     string arrayIndex = "EMPTY";
     int arraySize = 0;
     string constValue = "EMPTY";
+    bool isInStack = false;
 
     bool isFunction = false;
     bool isDeclared = false;

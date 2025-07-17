@@ -1,0 +1,114 @@
+.MODEL SMALL
+.STACK 1000H
+.DATA
+    number DB "00000$"
+    i DW 1 DUP (0000H)    ; Line 1
+    j DW 1 DUP (0000H)    ; Line 1
+.CODE
+main PROC
+    ;initialize data segment
+    MOV AX, @DATA
+    MOV DS, AX
+	;preserve base pointer
+    PUSH BP
+    MOV BP, SP
+    SUB SP, 2    ; Line 4
+    SUB SP, 2    ; Line 4
+    SUB SP, 2    ; Line 4
+    SUB SP, 2    ; Line 4
+    SUB SP, 2    ; Line 4
+    SUB SP, 2    ; Line 4
+    MOV AX, 3    ; Line 6
+    MOV BX, 4    ; Line 6
+    MUL BL    ; Line 6
+    PUSH AX    ; Line 6
+    POP AX    ; Line 6
+    MOV BX, 2    ; Line 6
+    MUL BL    ; Line 6
+    PUSH AX    ; Line 6
+    POP AX    ; Line 6
+    MOV BX, 5    ; Line 6
+    ADD AX, BX    ; Line 6
+    PUSH AX    ; Line 6
+    POP AX    ; Line 6
+    MOV BX, 6    ; Line 6
+    ADD AX, BX    ; Line 6
+    PUSH AX    ; Line 6
+    POP AX    ; Line 6
+    MOV BX, 7    ; Line 6
+    ADD AX, BX    ; Line 6
+    PUSH AX    ; Line 6
+    POP AX    ; Line 6
+    MOV i, AX    ; Line 6
+    PUSH AX    ; Line 7
+    MOV AX, i    ; Line 7
+    CALL print_output    ; Line 7
+    CALL new_line    ; Line 7
+	POP AX    ; Line 7
+	;restore stack pointer
+    ADD SP, 2
+    ADD SP, 2
+    ADD SP, 2
+    ADD SP, 2
+    ADD SP, 2
+    ADD SP, 2
+	;restore base pointer
+    POP BP
+    ;exit program
+    MOV AX,4CH
+    INT 21H
+main ENDP
+
+new_line proc
+    push ax
+    push dx
+    mov ah,2
+    mov dl,0Dh
+    int 21h
+    mov ah,2
+    mov dl,0Ah
+    int 21h
+    pop dx
+    pop ax
+    ret
+new_line endp
+print_output proc  ;print what is in ax
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    lea si,number
+    mov bx,10
+    add si,4
+    cmp ax,0
+    jnge negate
+print:
+    xor dx,dx
+    div bx
+    mov [si],dl
+    add [si],'0'
+    dec si
+    cmp ax,0
+    jne print
+    inc si
+    lea dx,si
+    mov ah,9
+    int 21h
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+negate:
+    push ax
+    mov ah,2
+    mov dl,'-'
+    int 21h
+    pop ax
+    neg ax
+    jmp print
+print_output endp
+
+END

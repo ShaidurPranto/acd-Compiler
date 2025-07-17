@@ -1,0 +1,11 @@
+int i, j;
+int main()
+{
+	int k, ll, m, n, o, p;
+
+	i=3*4*2;
+	println(();
+
+	return 0;
+}
+

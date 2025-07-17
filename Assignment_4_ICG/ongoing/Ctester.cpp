@@ -47,23 +47,23 @@ int main(int argc, const char* argv[]) {
     system(("mkdir -p " + outputDirectory).c_str());
 
     // ---- Output Files ----
-    // parserLogFile.open(parserLogFileName);
-    // if (!parserLogFile.is_open()) {
-    //     cerr << "Error opening parser log file: " << parserLogFileName << endl;
-    //     return 1;
-    // }
+    parserLogFile.open(parserLogFileName);
+    if (!parserLogFile.is_open()) {
+        cerr << "Error opening parser log file: " << parserLogFileName << endl;
+        return 1;
+    }
 
-    // errorFile.open(errorFileName);
-    // if (!errorFile.is_open()) {
-    //     cerr << "Error opening error log file: " << errorFileName << endl;
-    //     return 1;
-    // }
+    errorFile.open(errorFileName);
+    if (!errorFile.is_open()) {
+        cerr << "Error opening error log file: " << errorFileName << endl;
+        return 1;
+    }
 
-    // lexLogFile.open(lexLogFileName);
-    // if (!lexLogFile.is_open()) {
-    //     cerr << "Error opening lexer log file: " << lexLogFileName << endl;
-    //     return 1;
-    // }
+    lexLogFile.open(lexLogFileName);
+    if (!lexLogFile.is_open()) {
+        cerr << "Error opening lexer log file: " << lexLogFileName << endl;
+        return 1;
+    }
 
     codeFile.open(codeFileName);
     if (!codeFile.is_open()) {
@@ -98,9 +98,9 @@ int main(int argc, const char* argv[]) {
     // clean up
     inputFile.close();
 
-    // parserLogFile.close();
-    // errorFile.close();
-    // lexLogFile.close();
+    parserLogFile.close();
+    errorFile.close();
+    lexLogFile.close();
 
     codeFile.close();
     optCodeFile.close();
