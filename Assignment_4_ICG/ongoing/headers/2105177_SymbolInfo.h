@@ -58,6 +58,13 @@ struct Identifier {
     int arraySize = 0;
     string constValue = "EMPTY";
     bool isInStack = false;
+    string printedTrueLabel = "EMPTY";
+    string printedFalseLabel = "EMPTY";
+    string printedNextLabel = "EMPTY";
+    string trueLabel = "EMPTY";
+    string falseLabel = "EMPTY";
+    string nextLabel = "EMPTY";
+    string startLabel = "EMPTY";
 
     bool isFunction = false;
     bool isDeclared = false;

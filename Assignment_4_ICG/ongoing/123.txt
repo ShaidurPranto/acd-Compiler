@@ -25,7 +25,9 @@ options {
 @parser::members {
 	bool isDebug = true;
 	int stackMemberCount;
+	int labelCount;
 
+	// static boilerplate , utility functions to generate code
 	void writeIntoCodeFile(const std::string& code) {
 		if (!codeFile) {
 			std::cout << "Error opening codeFile.txt" << std::endl;
@@ -54,7 +56,6 @@ options {
 		std::string code = "    ; Line " + line;
 		return code;
 	}
-
 	void initializeCodeFile() {
 		std::string templateCode = ".MODEL SMALL\n.STACK 1000H\n.DATA\n    number DB \"00000$\"\n";
 		writeIntoCodeFile(templateCode);
@@ -118,11 +119,12 @@ options {
 		writeIntoTempFile(code);
 	}
 
+	// general utility functions
 	void enterScope() {
 		stackMemberCount = 0;
+		labelCount = 0;
 		symbolTable.enterScope();
 	}
-
 	void exitScope() {
 		std::string code;
 		code = "	;restore stack pointer\n"; writeIntoTempFile(code);
@@ -131,21 +133,9 @@ options {
 		}
 		symbolTable.exitScope(); 
 	}
-
 	bool isGlobalScope() {
 		return symbolTable.isRootScope();
 	}
-	
-	void preserveTemporaryRegisters() {
-		std::string code = "    PUSH AX\n    PUSH BX\n    PUSH CX\n    PUSH DX\n";
-		writeIntoTempFile(code);
-	}
-
-	void restoreTemporaryRegisters() {
-		std::string code = "    POP DX\n    POP CX\n    POP BX\n    POP AX\n";
-		writeIntoTempFile(code);
-	}
-
 	void debug(std::string message) {
 		if (isDebug) {
 			std::string code = "	;DEBUG: " + message + "\n";
@@ -163,7 +153,20 @@ options {
 		debug("Stack Offset: " + std::to_string(id.stackOffset) + "\n");
 		debug("Is In Stack: " + std::string(id.isInStack ? "true" : "false") + "\n");
 	}
+	std::string generateLabel() {
+		return "L" + std::to_string(labelCount++);
+	}
 
+	void preserveTemporaryRegisters() {
+		std::string code = "    PUSH AX\n    PUSH BX\n    PUSH CX\n    PUSH DX\n";
+		writeIntoTempFile(code);
+	}
+	void restoreTemporaryRegisters() {
+		std::string code = "    POP DX\n    POP CX\n    POP BX\n    POP AX\n";
+		writeIntoTempFile(code);
+	}	
+
+	// handling different grammar rules
 	void globalVariableDeclaration(Identifier id, std::string line) {
 		SymbolInfo* symbol = symbolTable.insert(id.idName, "ID");
 		if (symbol != NULL) {
@@ -245,7 +248,6 @@ options {
 		code = "	POP AX" + getComment(line) + "\n";
 		writeIntoTempFile(code);
 	}
-
 	void assignVariable(Identifier var, Identifier value, std::string line) {
 		std::string code;
 		if(value.isInStack) {
@@ -254,35 +256,21 @@ options {
 			if(var.isGlobal) {
 				code = "    MOV " + identifierAddress(var) + ", AX" + getComment(line) + "\n";
 			} else {
-				code = "    MOV WORD PTR " + identifierAddress(var) + ", AX" + getComment(line) + "\n";
+				// code = "    MOV WORD PTR " + identifierAddress(var) + ", AX" + getComment(line) + "\n";
+				code = "    MOV " + identifierAddress(var) + ", AX" + getComment(line) + "\n";
 			}
 			writeIntoTempFile(code); 
 		} else {
+			code = "    MOV AX, " + identifierAddress(value) + getComment(line) + "\n";
+			writeIntoTempFile(code);
 			if(var.isGlobal) {
-				code = "    MOV " + identifierAddress(var) + ", " + identifierAddress(value) + getComment(line) + "\n";  
+				code = "    MOV " + identifierAddress(var) + ", AX" + getComment(line) + "\n";  
 			} else {
-				code = "    MOV WORD PTR " + identifierAddress(var) + ", " + identifierAddress(value) + getComment(line) + "\n";  
+				// code = "    MOV WORD PTR " + identifierAddress(var) + ", AX" + getComment(line) + "\n";  
+				code = "    MOV " + identifierAddress(var) + ", AX" + getComment(line) + "\n";  
 			}
 			writeIntoTempFile(code);
 		}
-	}
-
-	void addIdentifier(Identifier left, Identifier right, std::string line) {
-		std::string code;
-		if(right.isInStack) {
-			code = "    POP BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		}else {
-			code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
-		}
-
-		if(left.isInStack) {
-			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		}else {
-			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
-		}		
-
-		code = "    ADD AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
 	}
 	void concatenatingAddMul(Identifier left, Identifier right, std::string line, std::string operation) {
 		std::string code;
@@ -312,48 +300,50 @@ options {
 		}
 		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
 	}
-	void subIdentifier(Identifier left, Identifier right, std::string line) {
+
+	void generateRelationalCode(Identifier expr,Identifier left, Identifier right, std::string line, std::string operation) {
 		std::string code;
 		if(right.isInStack) {
 			code = "    POP BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		}else {
+		} else {
 			code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
 		}
 
 		if(left.isInStack) {
 			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		}else {
-			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
-		}		
-		
-		code = "    SUB AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-	}
-	void mulIdentifier(Identifier left, Identifier right, std::string line) {
-		std::string code;
-		if(left.isInStack) {
-			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		}else {
+		} else {
 			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
 		}
-		code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    MUL BL" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-	}
-	void modIdentifier(Identifier left, Identifier right, std::string line) {
-		std::string code;
-		if(left.isInStack) {
-			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		}else {
-			code = "    MOV AX, " + identifierAddress(left) + getComment(line) + "\n"; writeIntoTempFile(code);
+
+		if(operation == "<") {
+			code = "    CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "	JL " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "    JMP " + expr.printedFalseLabel + getComment(line) + "\n"; writeIntoTempFile(code);
+		} else if(operation == "<=") {
+			code = "	CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "	JLE " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "    JMP " + expr.printedFalseLabel + getComment(line) + "\n"; writeIntoTempFile(code);
+		} else if(operation == ">") {
+			debug("> operator not handled in the function generateRelationalCode");
+		} else if(operation == ">=") {
+			debug(">=" operator not handled in the function generateRelationalCode");
+		} else if(operation == "==") {
+			debug("== operator not handled in the function generateRelationalCode");
+		} else if(operation == "!=") {
+			code = "    CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "	JNE " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
+			code = "    JMP " + expr.printedFalseLabel + getComment(line) + "\n"; writeIntoTempFile(code);
 		}
-		code = "    MOV BX, " + identifierAddress(right) + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    DIV BL" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    XOR CX, CX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    MOV CL, AH" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    MOV AX, CX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-	}	
+	}
+	void assignLogicalVariable(Identifier var, Identifier logicValue, std::string line) {
+		std::string code;
+		code = "    " + logicValue.printedTrueLabel + ":\n"; writeIntoTempFile(code);
+		code = "    MOV " + identifierAddress(var) + ", 1" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    JMP " + logicValue.printedNextLabel + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    " + logicValue.printedFalseLabel + ":\n"; writeIntoTempFile(code);
+		code = "    MOV " + identifierAddress(var) + ", 0" + getComment(line) + "\n"; writeIntoTempFile(code);
+		code = "    " + logicValue.printedNextLabel + ":\n"; writeIntoTempFile(code);
+	}
 
 	
 }
@@ -487,7 +477,11 @@ expression returns [Identifier id] :
 		$id = $logic_expression.id;
 	}
     | v = variable ASSIGNOP le = logic_expression {
-		assignVariable($v.id, $le.id, to_string($ASSIGNOP->getLine()));
+		if($le.id.printedTrueLabel == "EMPTY" && $le.id.printedFalseLabel == "EMPTY") {
+			assignVariable($v.id, $le.id, to_string($ASSIGNOP->getLine()));
+		} else {
+			assignLogicalVariable($v.id, $le.id, to_string($ASSIGNOP->getLine()));
+		}
 	}
 ;
 
@@ -503,7 +497,13 @@ rel_expression returns [Identifier id] :
     simple_expression {
 		$id = $simple_expression.id;
 	}
-    | simple_expression RELOP simple_expression {
+    | se1 = simple_expression RELOP se2 = simple_expression {
+		Identifier id;
+		id.trueLabel = id.printedTrueLabel = generateLabel();
+		id.falseLabel = id.printedFalseLabel = generateLabel();
+		id.nextLabel = id.printedNextLabel = generateLabel();
+		$id = id;
+		generateRelationalCode(id,$se1.id, $se2.id, to_string($RELOP->getLine()), $RELOP->getText());
 	}
 ;
 
