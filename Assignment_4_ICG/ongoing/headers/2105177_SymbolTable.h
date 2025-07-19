@@ -55,7 +55,15 @@ class SymbolTable{
 
     double getInclusiveCollisionRatio(); // returns total number of collisions in all scopes including deleted scopes / total size of all scopes including deleted scopes
 
+    // new for icg
     bool isRootScope();
+    
+    int setStackMemberCount(int count) {
+        return currentScope->setStackMemberCount(count);
+    }
+    int getStackMemberCount() {
+        return currentScope->getStackMemberCount();
+    }
 };
 
 #endif

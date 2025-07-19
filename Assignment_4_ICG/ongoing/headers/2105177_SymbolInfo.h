@@ -65,6 +65,11 @@ struct Identifier {
     string falseLabel = "EMPTY";
     string nextLabel = "EMPTY";
     string startLabel = "EMPTY";
+    bool isEmptyExpression = false;
+    bool isIncDec = false;
+    int nextLabelLineCount = 0;
+    bool isEvaluated = false;
+    string incDecOp = "EMPTY";
 
     bool isFunction = false;
     bool isDeclared = false;

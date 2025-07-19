@@ -19,6 +19,9 @@ class ScopeTable{
 
     int collisionCount;
 
+    // new for icg
+    int stackMemberCount = 0; 
+
 
     int getIndex(string key);
 
@@ -51,6 +54,14 @@ class ScopeTable{
     void printScopeTable(int n = 1);
 
     void printNonEmptyScopeTable(ofstream &fout);
+
+    // new for icg
+    int setStackMemberCount(int count) {
+        return stackMemberCount = count;
+    }
+    int getStackMemberCount() {
+        return stackMemberCount;
+    }
 };
 
 #endif
