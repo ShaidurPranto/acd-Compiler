@@ -740,9 +740,9 @@ start :
     { initializeCodeFile(); initializeTempFile(); }p = program {
         finalizeTempFile();
         mergeTempFileToCodeFile();
-		// cleanFileFromNonText(codeFileName);
-		// cleanFileFromNonText(optCodeFileName);
-		// cleanFileFromNonText(tempFileName);
+		cleanFileFromNonText(codeFileName);
+		cleanFileFromNonText(optCodeFileName);
+		cleanFileFromNonText(tempFileName);
     }
 ;
 
@@ -838,7 +838,7 @@ statement :
     var_declaration
     | expression_statement
     | compound_statement
-    | FOR{setLoopLabels();} LPAREN expression_statement es = expression_statement{$es.id = generateLoopExpression($es.id, to_string($FOR->getLine()));} {handleBeforeLoopExpression($es.id);}e = expression{handleAfterLoopExpression($es.id);} RPAREN {handleBeforeLoopStatement($es.id);}statement {
+    | FOR{setLoopLabels();} LPAREN expression_statement es = expression_statement{$es.id = generateLoopExpression($es.id, to_string($FOR->getLine()));} {handleBeforeLoopExpression($es.id);}e = expression{if($e.id.isIncDec){evaluateIncDec($e.id, to_string($FOR->getLine()));};handleAfterLoopExpression($es.id);} RPAREN {handleBeforeLoopStatement($es.id);}statement {
 		handleAfterLoopStatement($es.id);
 		clearLoopLabels();
 	}

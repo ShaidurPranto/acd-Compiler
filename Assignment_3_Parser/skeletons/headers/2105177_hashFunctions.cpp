@@ -14,10 +14,10 @@ unsigned int SDBMHash(string str, int size)
 
     for (unsigned int i = 0; i < len; i++)
     {
-        hash = ((str[i]) + (hash << 6) + (hash << 16) - hash) % size;
+        hash = ((str[i]) + (hash << 6) + (hash << 16) - hash);
     }
 
-    return hash;
+    return hash % size;
 }
 
 unsigned int DJBHash(string str, int size) 

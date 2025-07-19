@@ -105,6 +105,7 @@ void SymbolTable::printAllNonEmptyScopeTables(ofstream &fout){
     fout << endl;
 }
 
+
 int SymbolTable::getTotalCollisions(){
     int totalCollisions = 0;
     ScopeTable* temp = currentScope;

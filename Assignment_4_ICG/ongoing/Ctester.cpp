@@ -17,6 +17,8 @@ ofstream codeFile;
 ofstream optCodeFile;
 ofstream tempFile;
 string tempFileName;
+string codeFileName;
+string optCodeFileName;
 
 int syntaxErrorCount;
 
@@ -39,9 +41,10 @@ int main(int argc, const char* argv[]) {
     string parserLogFileName = outputDirectory + "parserLog.txt";
     string errorFileName = outputDirectory + "errorLog.txt";
     string lexLogFileName = outputDirectory + "lexerLog.txt";
-    string codeFileName = outputDirectory + "code.txt";
-    string optCodeFileName = outputDirectory + "optCode.txt";
+    codeFileName = outputDirectory + "code.txt";
+    optCodeFileName = outputDirectory + "optCode.txt";
     tempFileName = outputDirectory + "temp.txt";
+
 
     // create output directory if it doesn't exist
     system(("mkdir -p " + outputDirectory).c_str());

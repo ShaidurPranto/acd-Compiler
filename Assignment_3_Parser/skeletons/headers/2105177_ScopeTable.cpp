@@ -200,14 +200,20 @@ void ScopeTable::printScopeTable(int n){
 }
 
 void ScopeTable::printNonEmptyScopeTable(ofstream &fout){
+    // string numbering = "";
+    // for(int i=0;i<tableNumber;i++){
+    //     numbering += "1";
+    //     if(i < tableNumber - 1){
+    //         numbering += ".";
+    //     }
+    // }
+
     string numbering = "";
-    for(int i=0;i<tableNumber;i++){
-        numbering += "1";
-        if(i < tableNumber - 1){
-            numbering += ".";
-        }
+    if(tableNumber == 1){
+        numbering = "1";
+    }else{
+        numbering = "1." + to_string(tableNumber - 1);
     }
-    
 
     fout << "ScopeTable # " << numbering << endl;
     for(int i=0;i<size;i++){

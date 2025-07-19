@@ -58,6 +58,8 @@ struct Identifier {
     bool isDefined = false;
     string returnType = "EMPTY";
     param_list parameters;
+    bool hasReturn = false;
+    bool isError = false;
 };
 
 class SymbolInfo {   
