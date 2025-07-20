@@ -35,11 +35,6 @@ options {
 	std::string loopExpressionLabel = "EMPTY";
 	std::string loopStatementLabel = "EMPTY";
 	bool isScopeAllowed = true;
-	std::string currentFuncName = "EMPTY";
-	bool isReturned = false;
-	int pushCount = 0;
-	int popCount = 0;
-	int numberOfArguments = 0;
 
 	// static boilerplate , utility functions to generate code
 	void writeIntoCodeFile(const std::string& code) {
@@ -58,7 +53,7 @@ options {
 		optCodeFile << code;
 		optCodeFile.flush();
 	}
-	int countNewLineOuccrences(std::string code) {
+	int countNewLineOuccrences(const std::string& code) {
 		int count = 0;
 		for (char c : code) {
 			if (c == '\n') {
@@ -67,7 +62,7 @@ options {
 		}
 		return count;
 	}
-	void writeIntoTempFile(std::string code) {
+	void writeIntoTempFile(const std::string& code) {
 		if (!tempFile) {
 			std::cout << "Error opening tempFile.txt" << std::endl;
 			return;
@@ -135,13 +130,6 @@ options {
 	}
 
 	// general utility functions
-	std::string toUpper(const std::string& str) {
-		std::string upperStr = str;
-		for (char& c : upperStr) {
-			c = toupper(c);
-		}
-		return upperStr;
-	}	
 	void preserveBasePointer() {
 		std::string code;
 		code = "	;preserve base pointer\n"; writeIntoTempFile(code);
@@ -152,6 +140,12 @@ options {
 		code = "	;restore base pointer\n"; writeIntoTempFile(code);
 		code = "    POP BP\n"; writeIntoTempFile(code);
 	}	
+	void setScopeAllowed(){
+		isScopeAllowed = true;
+	}
+	void clearScopeAllowed() {
+		isScopeAllowed = false;
+	}
 	int increaseStackMemberCount() {
 		int count = symbolTable.getStackMemberCount();
 		count = count + 1;
@@ -160,28 +154,24 @@ options {
 	}
 	int getStackMemberCount() {
 		return symbolTable.getStackMemberCount();
-	}
-	void resetStackMemberCount() {
-		symbolTable.setStackMemberCount(0);
 	}	
-	void enterScope(std::string name, std::string type) {
-		SymbolInfo* symbol = symbolTable.insert(name,type);
-		symbolTable.enterScope();
-		preserveBasePointer();
-		currentFuncName = name;
-		isReturned = false;
-		pushCount = 0;
-		popCount = 0;	
+	void enterScope() {
+		if(isScopeAllowed) {
+			symbolTable.enterScope();
+			preserveBasePointer();
+		}
 	}
 	void exitScope() {
-		std::string code;
-		code = "	;restore stack pointer\n"; writeIntoTempFile(code);
-		int count = getStackMemberCount();
-		for(int i = 0; i < count; i++) {
-			code = "    ADD SP, 2\n"; writeIntoTempFile(code);
-		}
-		restoreBasePointer();
-		symbolTable.exitScope();		
+		if(isScopeAllowed){
+			std::string code;
+			code = "	;restore stack pointer\n"; writeIntoTempFile(code);
+			int count = getStackMemberCount();
+			for(int i = 0; i < count; i++) {
+				code = "    ADD SP, 2\n"; writeIntoTempFile(code);
+			}
+			restoreBasePointer();
+			symbolTable.exitScope();
+		} 
 	}
 	SymbolInfo* lookupSymbol(std::string name) {
 		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(name);
@@ -265,14 +255,14 @@ options {
 		outputFile.close();
 		writeIntoTempFile("\n");
 	}
-	void changeLabelFromTempFromBottom(const std::string& label, const std::string& newLabel) {
-		debug("Changing label: " + label + " to: " + newLabel + " in entire file (bottom to top scan)\n");
+	void changeLabelFromTempAtLine(const std::string& label, const std::string& newLabel, int targetLine) {
+		debug("changing label: " + label + " ,to: " + newLabel + " ,from line no: " + std::to_string(targetLine) + "\n");
 
 		if (label == newLabel) return;
 
 		std::ifstream inputFile(tempFileName);
 		if (!inputFile) {
-			std::cerr << "Error opening temp file for reading\n";
+			std::cerr << "Error opening tempFile.txt for reading" << std::endl;
 			return;
 		}
 
@@ -283,13 +273,20 @@ options {
 		}
 		inputFile.close();
 
-		bool labelReplaced = false;
+		if (targetLine < 1 || targetLine > static_cast<int>(lines.size())) {
+			std::cerr << "Invalid line number." << std::endl;
+			return;
+		}
 
-		// Traverse from bottom to top
-		for (int i = static_cast<int>(lines.size()) - 1; i >= 0; --i) {
+		int centerIndex = targetLine - 1;
+		int startRange = std::max(0, centerIndex - 5);
+		int endRange = std::min(static_cast<int>(lines.size()) - 1, centerIndex + 5);
+
+		bool labelReplaced = false;
+		for (int i = endRange; i >= startRange; --i) {
 			std::string originalLine = lines[i];
 
-			// Preserve leading whitespace
+			// Extract leading whitespace
 			size_t leadingWsLen = originalLine.find_first_not_of(" \t");
 			std::string leadingWhitespace = (leadingWsLen != std::string::npos) ? originalLine.substr(0, leadingWsLen) : "";
 
@@ -297,12 +294,15 @@ options {
 			std::string firstWord, secondWord;
 			if (!(iss >> firstWord >> secondWord)) continue;
 
-			// Ensure the line has exactly two tokens
-			std::string extra;
-			if (iss >> extra) continue;
+			// Ensure exactly two words
+			std::string dummy;
+			if (iss >> dummy) continue;
 
-			if (firstWord == "JMP" && secondWord == label) {
-				lines[i] = leadingWhitespace + "JMP " + newLabel;
+			// Skip label declarations like "L4:"
+			if (firstWord.back() == ':') continue;
+
+			if (secondWord == label) {
+				lines[i] = leadingWhitespace + firstWord + " " + newLabel;
 				labelReplaced = true;
 				debug("Replaced at line " + std::to_string(i + 1) + ": " + originalLine + " → " + lines[i] + "\n");
 				break;
@@ -310,14 +310,15 @@ options {
 		}
 
 		if (!labelReplaced) {
-			std::cerr << "Label '" << label << "' not found in JMP instructions\n";
+			std::cerr << "Label '" << label << "' not found in range [" 
+					<< (startRange + 1) << "-" << (endRange + 1) << "]" << std::endl;
 			return;
 		}
 
-		// Write back to the file
+		// Write all lines back to file
 		std::ofstream outputFile(tempFileName, std::ios::out | std::ios::trunc);
 		if (!outputFile) {
-			std::cerr << "Error opening temp file for writing\n";
+			std::cerr << "Error opening tempFile.txt for writing" << std::endl;
 			return;
 		}
 
@@ -325,83 +326,8 @@ options {
 			outputFile << l << "\n";
 		}
 		outputFile.close();
-
-		writeIntoTempFile("\n");  // Optional based on your design
+		writeIntoTempFile("\n");
 	}
-
-	// void changeLabelFromTempAtLine(const std::string& label, const std::string& newLabel, int targetLine) {
-	// 	debug("changing label: " + label + " ,to: " + newLabel + " ,from line no: " + std::to_string(targetLine) + "\n");
-
-	// 	if (label == newLabel) return;
-
-	// 	std::ifstream inputFile(tempFileName);
-	// 	if (!inputFile) {
-	// 		std::cerr << "Error opening tempFile.txt for reading" << std::endl;
-	// 		return;
-	// 	}
-
-	// 	std::vector<std::string> lines;
-	// 	std::string line;
-	// 	while (std::getline(inputFile, line)) {
-	// 		lines.push_back(line);
-	// 	}
-	// 	inputFile.close();
-
-	// 	if (targetLine < 1 || targetLine > static_cast<int>(lines.size())) {
-	// 		std::cerr << "Invalid line number." << std::endl;
-	// 		return;
-	// 	}
-
-	// 	int centerIndex = targetLine - 1;
-	// 	int startRange = std::max(0, centerIndex - 5);
-	// 	int endRange = std::min(static_cast<int>(lines.size()) - 1, centerIndex + 5);
-
-	// 	bool labelReplaced = false;
-	// 	for (int i = endRange; i >= startRange; --i) {
-	// 		std::string originalLine = lines[i];
-
-	// 		// Extract leading whitespace
-	// 		size_t leadingWsLen = originalLine.find_first_not_of(" \t");
-	// 		std::string leadingWhitespace = (leadingWsLen != std::string::npos) ? originalLine.substr(0, leadingWsLen) : "";
-
-	// 		std::istringstream iss(originalLine.substr(leadingWsLen));
-	// 		std::string firstWord, secondWord;
-	// 		if (!(iss >> firstWord >> secondWord)) continue;
-
-	// 		// Ensure exactly two words
-	// 		std::string dummy;
-	// 		if (iss >> dummy) continue;
-
-	// 		// Skip label declarations like "L4:"
-	// 		if (firstWord.back() == ':') continue;
-
-	// 		if (secondWord == label) {
-	// 			lines[i] = leadingWhitespace + firstWord + " " + newLabel;
-	// 			labelReplaced = true;
-	// 			debug("Replaced at line " + std::to_string(i + 1) + ": " + originalLine + " → " + lines[i] + "\n");
-	// 			break;
-	// 		}
-	// 	}
-
-	// 	if (!labelReplaced) {
-	// 		std::cerr << "Label '" << label << "' not found in range [" 
-	// 				<< (startRange + 1) << "-" << (endRange + 1) << "]" << std::endl;
-	// 		return;
-	// 	}
-
-	// 	// Write all lines back to file
-	// 	std::ofstream outputFile(tempFileName, std::ios::out | std::ios::trunc);
-	// 	if (!outputFile) {
-	// 		std::cerr << "Error opening tempFile.txt for writing" << std::endl;
-	// 		return;
-	// 	}
-
-	// 	for (const auto& l : lines) {
-	// 		outputFile << l << "\n";
-	// 	}
-	// 	outputFile.close();
-	// 	writeIntoTempFile("\n");
-	// }
 	void cleanFileFromNonText(const std::string& fileName) {
 		std::ifstream inputFile(fileName, std::ios::in | std::ios::binary);
 		if (!inputFile) {
@@ -432,85 +358,7 @@ options {
 		outputFile << cleaned;
 		outputFile.close();
 	}	
-	std::string extractBlock(const std::vector<std::string>& lines, const std::string& procName, size_t& startIndex, size_t& endIndex) {
-		std::string startTag = procName + " PROC";
-		std::string endTag = procName + " ENDP";
-		bool inBlock = false;
-		std::ostringstream block;
 
-		for (size_t i = 0; i < lines.size(); ++i) {
-			if (!inBlock && lines[i].find(startTag) != std::string::npos) {
-				startIndex = i;
-				inBlock = true;
-			}
-			if (inBlock) {
-				block << lines[i] << '\n';
-				if (lines[i].find(endTag) != std::string::npos) {
-					endIndex = i;
-					break;
-				}
-			}
-		}
-		return block.str();
-	}
-
-	void moveMainProcAfterCode(const std::string& filename) {
-		std::ifstream fileIn(filename);
-		if (!fileIn.is_open()) {
-			std::cerr << "Error: Cannot open file " << filename << std::endl;
-			return;
-		}
-
-		std::vector<std::string> lines;
-		std::string line;
-		while (std::getline(fileIn, line)) {
-			lines.push_back(line);
-		}
-		fileIn.close();
-
-		size_t mainStart = 0, mainEnd = 0;
-		std::string mainBlock = extractBlock(lines, "main", mainStart, mainEnd);
-		if (mainBlock.empty()) {
-			std::cerr << "Error: 'main PROC' block not found.\n";
-			return;
-		}
-
-		// Find the index of the line with ".CODE"
-		size_t codeLineIndex = 0;
-		for (size_t i = 0; i < lines.size(); ++i) {
-			if (lines[i].find(".CODE") != std::string::npos) {
-				codeLineIndex = i;
-				break;
-			}
-		}
-
-		// Reconstruct the file content
-		std::ostringstream output;
-		for (size_t i = 0; i <= codeLineIndex; ++i) {
-			output << lines[i] << '\n';
-		}
-
-		output << '\n' << mainBlock << '\n';  // Insert main PROC after .CODE
-
-		for (size_t i = 0; i < lines.size(); ++i) {
-			if (i < mainStart || i > mainEnd) {
-				// Avoid duplicating the main PROC block
-				if (i != codeLineIndex)  // Already added .CODE
-					output << lines[i] << '\n';
-			}
-		}
-
-		std::ofstream fileOut(filename);
-		if (!fileOut.is_open()) {
-			std::cerr << "Error: Cannot write to file " << filename << std::endl;
-			return;
-		}
-
-		fileOut << output.str();
-		fileOut.close();
-
-		std::cout << "'main PROC' block moved after '.CODE' successfully.\n";
-	}
 
 
 
@@ -579,11 +427,7 @@ options {
 				int total_offset = std::stoi(id.arrayIndex) * 2 + id.stackOffset;
 				address = "[BP - "  + std::to_string(total_offset) + "]";
 			} else {
-				if(id.stackOffset >= 0) {
-					address = "[BP - "  + std::to_string(id.stackOffset) + "]";
-				}else {
-					address = "[BP + "  + std::to_string(0 - id.stackOffset) + "]";
-				}
+				address = "[BP - "  + std::to_string(id.stackOffset) + "]";
 			}
 		}
 		return address;
@@ -610,8 +454,9 @@ options {
 		code = "    JMP " + id.startLabel + "\n"; writeIntoTempFile(code);
 		code = "    " + label + ":\n"; writeIntoTempFile(code);
 	
-		changeLabelFromTempFromBottom(id.printedNextLabel, label);
+		changeLabelFromTempAtLine(id.printedNextLabel, label, id.nextLabelLineCount);
 		id.printedNextLabel = label;
+
 
 		id.printedNextLabel = label;
 		id.isEvaluated = true;
@@ -786,33 +631,27 @@ options {
 		}
 
 		Identifier newId = generateRelationalCodeForSimpleExpression(id, line);
-		if(id.isIncDec) {
-			newId.startLabel = id.startLabel;
-			newId.isIncDec = true;
-			return newId;
-		}
+		// if(id.isIncDec) {
+		// 	newId.startLabel = id.startLabel;
+		// 	newId.isIncDec = true;
+		// 	return newId;
+		// }
 		return newId;
 	}
 
 	Identifier generateCodeForIncDecOp(Identifier id,std::string op, std::string line) {
 		std::string code;
 		Identifier newId = id;
-		newId.isIncDec = true;
-		newId.startLabel = generateLabel();
-		newId.nextLabel = newId.printedNextLabel = generateLabel();
-		newId.incDecOp = op;
+		newId.isInStack = true;
 
-		code = "	JMP " + newId.printedNextLabel + "\n"; writeIntoTempFile(code);
-		code = "	" + newId.startLabel + ":\n"; writeIntoTempFile(code);
 		if(id.isInStack) {
 			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
 		} else {
 			code = "    MOV AX, " + identifierAddress(id) + getComment(line) + "\n"; writeIntoTempFile(code);
 		}
+		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
 		code = "    " + op + " AX, 1" + getComment(line) + "\n"; writeIntoTempFile(code);
 		code = "    MOV " + identifierAddress(id) + ", AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		code = "    JMP " + newId.printedNextLabel + "\n"; writeIntoTempFile(code); newId.nextLabelLineCount = lineCount - 1;
-		code = "    " + newId.printedNextLabel + ":\n"; writeIntoTempFile(code);
 		return newId;
 	}
 
@@ -888,51 +727,12 @@ options {
 		code = "    " + conditionalExpression.printedFalseLabel + ":\n"; writeIntoTempFile(code);
 	}
 
-	// function definition
-	void parameterDeclaration(identifier_list ids, std::string line) {
-		increaseStackMemberCount();	
-		for (int i = ids.get_identifiers().size() - 1; i >= 0; i--) {
-			Identifier id = ids.get_identifiers()[i];
-			SymbolInfo* symbol = symbolTable.insert(id.idName, "ID");
-			if (symbol != NULL) {
-				increaseStackMemberCount();	
-				symbol->id = id;
-				symbol->id.isGlobal = false;
-				symbol->id.stackOffset = 0 - 2 * getStackMemberCount();			
-			}
-		}
-		resetStackMemberCount();
-		numberOfArguments = ids.get_identifiers().size();
-	}
-	void handleReturnExpresssion(Identifier expression,std::string line){
-		if (currentFuncName == "main") {
-			exitScope();
-			exitMainFunction();
-		} else {
-			std::string code;
-			if(expression.isInStack) {
-				code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-			} else {
-				code = "    MOV AX, " + identifierAddress(expression) + getComment(line) + "\n"; writeIntoTempFile(code);
-			}
-
-			exitScope();
-
-			if(numberOfArguments > 0) {
-				code = "    RET " + std::to_string(numberOfArguments*2) + "\n"; writeIntoTempFile(code);
-			}else {
-				code = "    RET 2\n"; writeIntoTempFile(code);
-			}
-		}
-		isReturned = true;
-	}	
 
 }
 
 start :
     { initializeCodeFile(); initializeTempFile(); }p = program {
         finalizeTempFile();
-		moveMainProcAfterCode(tempFileName);
         mergeTempFileToCodeFile();
 		cleanFileFromNonText(codeFileName);
 		cleanFileFromNonText(optCodeFileName);
@@ -992,22 +792,11 @@ var_declaration :
 	}
 ;
 
-parameter_list returns [identifier_list ids] :
-    pl = parameter_list COMMA ts = type_specifier ID {
-        $ids = $pl.ids;
-		Identifier id;
-		id.idName = $ID->getText();
-		id.idType = $ts.type;
-        $ids.add(id);		
-	}	
-    | pl = parameter_list COMMA ts = type_specifier
-    | t = type_specifier ID {
-		Identifier id;
-		id.idName = $ID->getText();
-		id.idType = $t.type;
-		$ids.add(id);
-	}
-    | t = type_specifier
+parameter_list :
+    parameter_list COMMA type_specifier ID
+    | parameter_list COMMA type_specifier
+    | type_specifier ID
+    | type_specifier
 ;
 
 func_declaration :
@@ -1016,39 +805,16 @@ func_declaration :
 ;
 
 func_definition :
-    t = type_specifier ID{writeIntoTempFile($ID->getText() + " PROC\n");enterScope($ID->getText(),$t.type);} LPAREN pl = parameter_list{parameterDeclaration($pl.ids,std::to_string($ID->getLine()));} RPAREN compound_statement {
-		if(!isReturned){ 
-			exitScope();
-			std::string code;
-			if (numberOfArguments == 0) {
-				code = "    RET \n";
-			} else {
-				code = "    RET " + std::to_string(2 * numberOfArguments) + "\n";
-			}
-			writeIntoTempFile(code);
-		}
-
+    type_specifier ID{writeIntoTempFile($ID->getText() + " PROC\n");enterScope();} LPAREN parameter_list RPAREN compound_statement {
+		exitScope();
 		writeIntoTempFile($ID->getText() + " ENDP\n\n");
-		numberOfArguments = 0;
 	}
-    | t = type_specifier ID{writeIntoTempFile($ID->getText() + " PROC\n");} LPAREN RPAREN {initializeMainFunction($ID->getText());enterScope($ID->getText(),$t.type);} compound_statement {
-		if(!isReturned) {
-			exitScope();
-			if ($ID->getText() == "main") {
-				exitMainFunction();
-			} else {
-				std::string code;
-				if (numberOfArguments == 0) {
-					code = "    RET \n";
-				} else {
-					code = "    RET " + std::to_string(2 * numberOfArguments) + "\n";
-				}
-				writeIntoTempFile(code);
-			}
+    | type_specifier ID{writeIntoTempFile($ID->getText() + " PROC\n");} LPAREN RPAREN {initializeMainFunction($ID->getText());enterScope();} compound_statement {
+		exitScope();
+		if ($ID->getText() == "main") {
+			exitMainFunction();
 		}
-
 		writeIntoTempFile($ID->getText() + " ENDP\n\n");
-		numberOfArguments = 0;
 	}
 ;
 
@@ -1066,7 +832,7 @@ statement :
     var_declaration
     | expression_statement
     | compound_statement
-    | FOR{setLoopLabels();} LPAREN expression_statement es = expression_statement{$es.id = generateLoopExpression($es.id, to_string($FOR->getLine()));} {handleBeforeLoopExpression($es.id);}e = expression{if($e.id.isIncDec){evaluateIncDec($e.id, to_string($FOR->getLine()));};handleAfterLoopExpression($es.id);} RPAREN {handleBeforeLoopStatement($es.id);}statement {
+    | FOR{setLoopLabels();} LPAREN expression_statement es = expression_statement{$es.id = generateLoopExpression($es.id, to_string($FOR->getLine()));} {handleBeforeLoopExpression($es.id);}e = expression{handleAfterLoopExpression($es.id);} RPAREN {handleBeforeLoopStatement($es.id);}statement {
 		handleAfterLoopStatement($es.id);
 		clearLoopLabels();
 	}
@@ -1079,22 +845,14 @@ statement :
 	}
     | WHILE LPAREN e = expression{$e.id = generateLoopExpression($e.id, to_string($WHILE->getLine()));} RPAREN {handleBeforeWhileLoopExpression($e.id);}statement {
 		handleAfterWhileLoopExpression($e.id);
-		if($e.id.isIncDec) {
-			simpleIncDecEvaluation($e.id, to_string($WHILE->getLine()));
-		}
 	}
     | PRINTLN LPAREN ID RPAREN SEMICOLON {
 		Identifier id;
-		SymbolInfo* symbol = symbolTable.lookUp($ID->getText());
+		SymbolInfo* symbol = lookupSymbol($ID->getText());
 		id = symbol->id;
 		printVariable(id, to_string($PRINTLN->getLine()));		
 	}
-    | RETURN e = expression SEMICOLON {
-		handleReturnExpresssion($e.id,std::to_string($RETURN->getLine()));
-		if($e.id.isIncDec) {
-			evaluateIncDec($e.id, to_string($RETURN->getLine()));
-		}
-	}
+    | RETURN expression SEMICOLON
 ;
 
 expression_statement returns [Identifier id] :
@@ -1105,9 +863,6 @@ expression_statement returns [Identifier id] :
 	}
     | e = expression SEMICOLON {
 		$id = $e.id;
-		if($id.isIncDec) {
-			$id = evaluateIncDec($id, to_string($SEMICOLON->getLine()));
-		}
 	}
 ;
 
@@ -1129,9 +884,9 @@ logic_expression returns [Identifier id] :
         $id = $re.id;
     }
     | re1 = rel_expression LOGICOP re2 = rel_expression {
-		// $re1.id = generateRelationalCodeForSimpleExpression($re1.id, to_string($LOGICOP->getLine()));
-		// $re2.id = generateRelationalCodeForSimpleExpression($re2.id, to_string($LOGICOP->getLine()));
-		// $id = generateLogicalCode($re1.id, $re2.id, to_string($LOGICOP->getLine()), $LOGICOP->getText());
+		$re2.id = generateRelationalCodeForSimpleExpression($re2.id, to_string($LOGICOP->getLine()));
+		$re1.id = generateRelationalCodeForSimpleExpression($re1.id, to_string($LOGICOP->getLine()));
+		$id = generateLogicalCode($re2.id, $re1.id, to_string($LOGICOP->getLine()), $LOGICOP->getText());
     }
 ;
 
@@ -1185,20 +940,8 @@ factor returns [Identifier id] :
     v = variable {
 		$id = $v.id;
 	}
-    | ID LPAREN al = argument_list RPAREN {
-		std::string code;
-		std::string line = std::to_string($ID->getLine());
-		code = "    CALL " + $ID->getText() + getComment(line) + "\n"; writeIntoTempFile(code);
-		SymbolInfo* symbol = lookupSymbol($ID->getText());
-		// debug("called symbol , name: "+symbol->getName()+" ,type: "+symbol->getType()+"\n");
-		if(toUpper(symbol->getType()) != "VOID") {
-			code = "    PUSH AX\n"; writeIntoTempFile(code);
-			$id.isInStack = true;
-		}
-	}
-    | LPAREN e = expression RPAREN {
-		$id = $e.id;
-	}
+    | ID LPAREN argument_list RPAREN
+    | LPAREN expression RPAREN
     | CONST_INT {
 		Identifier id;
 		id.constValue = $CONST_INT->getText();
@@ -1226,31 +969,12 @@ variable returns [Identifier id] :
 	}
 ;
 
-argument_list returns [identifier_list ids] :
-    a = arguments {
-		$ids = $a.ids;
-	}
+argument_list :
+    arguments
     |
 ;
 
-arguments returns [identifier_list ids] :
-    a = arguments COMMA le = logic_expression {
-		std::string code;
-		std::string line = std::to_string($COMMA->getLine());
-		if($le.id.isInStack) {
-			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-		} else {
-			code = "    MOV AX, " + identifierAddress($le.id) + getComment(line) + "\n"; writeIntoTempFile(code);
-		}
-		code = "    PUSH AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-	}
-    | le = logic_expression {
-		std::string code;
-		if($le.id.isInStack) {
-			code = "    POP AX\n"; writeIntoTempFile(code);
-		} else {
-			code = "    MOV AX, " + identifierAddress($le.id) + "\n"; writeIntoTempFile(code);
-		}
-		code = "    PUSH AX\n"; writeIntoTempFile(code);
-	}
+arguments :
+    arguments COMMA logic_expression
+    | logic_expression
 ;
