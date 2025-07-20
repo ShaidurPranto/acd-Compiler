@@ -221,8 +221,7 @@ public:
   		for(int i = 0; i < count; i++) {
   			code = "    ADD SP, 2\n"; writeIntoTempFile(code);
   		}
-  		restoreBasePointer();
-  		symbolTable.exitScope();		
+  		restoreBasePointer();		
   	}
   	SymbolInfo* lookupSymbol(std::string name) {
   		SymbolInfo* symbol = symbolTable.lookUpInCurrentScope(name);
@@ -258,24 +257,27 @@ public:
   		debug("True Label: " + id.trueLabel + "\n");
   		debug("False Label: " + id.falseLabel + "\n");
   		debug("Next Label: " + id.nextLabel + "\n");
-  		debug("Printed True Label: " + id.printedTrueLabel + "\n");
-  		debug("Printed False Label: " + id.printedFalseLabel + "\n");
-  		debug("Printed Next Label: " + id.printedNextLabel + "\n");
-  		debug("Next Label line count: " + std::to_string(id.nextLabelLineCount) + "\n");
   	}
+  	void printIdentifierLabel(Identifier id) {
+  		debug("Start Label: " + id.startLabel + "\n");
+  		debug("True Label: " + id.trueLabel + "\n");
+  		debug("False Label: " + id.falseLabel + "\n");
+  		debug("Next Label: " + id.nextLabel + "\n");
+  	}	
   	std::string generateLabel() {
   		return "L" + std::to_string(labelCount++);
   	}
 
   	void preserveTemporaryRegisters() {
-  		std::string code = "    PUSH AX\n    PUSH BX\n    PUSH CX\n    PUSH DX\n";
+  		std::string code = "    PUSH BX\n    PUSH CX\n    PUSH DX\n";
   		writeIntoTempFile(code);
   	}
   	void restoreTemporaryRegisters() {
-  		std::string code = "    POP DX\n    POP CX\n    POP BX\n    POP AX\n";
+  		std::string code = "    POP DX\n    POP CX\n    POP BX\n";
   		writeIntoTempFile(code);
   	}
   	void changeLabelFromTemp(std::string label, std::string newLabel) {
+  		writeIntoTempFile(label + "->" + newLabel + "\n");
   		debug("changing label: "+label+" ,to: "+newLabel+"\n");
   		if (label == newLabel) return;
 
@@ -294,7 +296,7 @@ public:
   		while ((pos = content.find(label, pos)) != std::string::npos) {
   			content.replace(pos, label.length(), newLabel);
   			pos += newLabel.length(); 
-  			break;
+  			// break;
   		}
 
   		std::ofstream outputFile(tempFileName, std::ios::out | std::ios::trunc);
@@ -306,143 +308,51 @@ public:
   		outputFile.close();
   		writeIntoTempFile("\n");
   	}
-  	void changeLabelFromTempFromBottom(const std::string& label, const std::string& newLabel) {
-  		debug("Changing label: " + label + " to: " + newLabel + " in entire file (bottom to top scan)\n");
+  	void changeLabelFromTempFromBottom(std::string label, std::string newLabel, bool all = false) {
+  		debug("Changing label: " + label + " to: " + newLabel + "\n");
 
   		if (label == newLabel) return;
-
   		std::ifstream inputFile(tempFileName);
-  		if (!inputFile) {
-  			std::cerr << "Error opening temp file for reading\n";
-  			return;
-  		}
-
   		std::vector<std::string> lines;
   		std::string line;
   		while (std::getline(inputFile, line)) {
   			lines.push_back(line);
   		}
   		inputFile.close();
-
   		bool labelReplaced = false;
 
-  		// Traverse from bottom to top
   		for (int i = static_cast<int>(lines.size()) - 1; i >= 0; --i) {
   			std::string originalLine = lines[i];
 
-  			// Preserve leading whitespace
   			size_t leadingWsLen = originalLine.find_first_not_of(" \t");
+  			if (leadingWsLen == std::string::npos) continue;
   			std::string leadingWhitespace = (leadingWsLen != std::string::npos) ? originalLine.substr(0, leadingWsLen) : "";
 
   			std::istringstream iss(originalLine.substr(leadingWsLen));
   			std::string firstWord, secondWord;
   			if (!(iss >> firstWord >> secondWord)) continue;
 
-  			// Ensure the line has exactly two tokens
   			std::string extra;
   			if (iss >> extra) continue;
 
-  			if (firstWord == "JMP" && secondWord == label) {
-  				lines[i] = leadingWhitespace + "JMP " + newLabel;
+  			if (firstWord[0] == 'J' && secondWord == label) {
+  				lines[i] = leadingWhitespace + firstWord + " " + newLabel;
   				labelReplaced = true;
-  				debug("Replaced at line " + std::to_string(i + 1) + ": " + originalLine + " → " + lines[i] + "\n");
-  				break;
+  				if(!all) break;
   			}
   		}
 
   		if (!labelReplaced) {
-  			std::cerr << "Label '" << label << "' not found in JMP instructions\n";
+  			std::cerr << "Label '" << label << "' not found\n";
   			return;
   		}
-
-  		// Write back to the file
   		std::ofstream outputFile(tempFileName, std::ios::out | std::ios::trunc);
-  		if (!outputFile) {
-  			std::cerr << "Error opening temp file for writing\n";
-  			return;
-  		}
-
   		for (const auto& l : lines) {
   			outputFile << l << "\n";
   		}
   		outputFile.close();
-
-  		writeIntoTempFile("\n");  // Optional based on your design
+  		writeIntoTempFile("\n"); 
   	}
-
-  	// void changeLabelFromTempAtLine(const std::string& label, const std::string& newLabel, int targetLine) {
-  	// 	debug("changing label: " + label + " ,to: " + newLabel + " ,from line no: " + std::to_string(targetLine) + "\n");
-
-  	// 	if (label == newLabel) return;
-
-  	// 	std::ifstream inputFile(tempFileName);
-  	// 	if (!inputFile) {
-  	// 		std::cerr << "Error opening tempFile.txt for reading" << std::endl;
-  	// 		return;
-  	// 	}
-
-  	// 	std::vector<std::string> lines;
-  	// 	std::string line;
-  	// 	while (std::getline(inputFile, line)) {
-  	// 		lines.push_back(line);
-  	// 	}
-  	// 	inputFile.close();
-
-  	// 	if (targetLine < 1 || targetLine > static_cast<int>(lines.size())) {
-  	// 		std::cerr << "Invalid line number." << std::endl;
-  	// 		return;
-  	// 	}
-
-  	// 	int centerIndex = targetLine - 1;
-  	// 	int startRange = std::max(0, centerIndex - 5);
-  	// 	int endRange = std::min(static_cast<int>(lines.size()) - 1, centerIndex + 5);
-
-  	// 	bool labelReplaced = false;
-  	// 	for (int i = endRange; i >= startRange; --i) {
-  	// 		std::string originalLine = lines[i];
-
-  	// 		// Extract leading whitespace
-  	// 		size_t leadingWsLen = originalLine.find_first_not_of(" \t");
-  	// 		std::string leadingWhitespace = (leadingWsLen != std::string::npos) ? originalLine.substr(0, leadingWsLen) : "";
-
-  	// 		std::istringstream iss(originalLine.substr(leadingWsLen));
-  	// 		std::string firstWord, secondWord;
-  	// 		if (!(iss >> firstWord >> secondWord)) continue;
-
-  	// 		// Ensure exactly two words
-  	// 		std::string dummy;
-  	// 		if (iss >> dummy) continue;
-
-  	// 		// Skip label declarations like "L4:"
-  	// 		if (firstWord.back() == ':') continue;
-
-  	// 		if (secondWord == label) {
-  	// 			lines[i] = leadingWhitespace + firstWord + " " + newLabel;
-  	// 			labelReplaced = true;
-  	// 			debug("Replaced at line " + std::to_string(i + 1) + ": " + originalLine + " → " + lines[i] + "\n");
-  	// 			break;
-  	// 		}
-  	// 	}
-
-  	// 	if (!labelReplaced) {
-  	// 		std::cerr << "Label '" << label << "' not found in range [" 
-  	// 				<< (startRange + 1) << "-" << (endRange + 1) << "]" << std::endl;
-  	// 		return;
-  	// 	}
-
-  	// 	// Write all lines back to file
-  	// 	std::ofstream outputFile(tempFileName, std::ios::out | std::ios::trunc);
-  	// 	if (!outputFile) {
-  	// 		std::cerr << "Error opening tempFile.txt for writing" << std::endl;
-  	// 		return;
-  	// 	}
-
-  	// 	for (const auto& l : lines) {
-  	// 		outputFile << l << "\n";
-  	// 	}
-  	// 	outputFile.close();
-  	// 	writeIntoTempFile("\n");
-  	// }
   	void cleanFileFromNonText(const std::string& fileName) {
   		std::ifstream inputFile(fileName, std::ios::in | std::ios::binary);
   		if (!inputFile) {
@@ -651,10 +561,10 @@ public:
   		code = "    JMP " + id.startLabel + "\n"; writeIntoTempFile(code);
   		code = "    " + label + ":\n"; writeIntoTempFile(code);
   	
-  		changeLabelFromTempFromBottom(id.printedNextLabel, label);
-  		id.printedNextLabel = label;
+  		changeLabelFromTempFromBottom(id.nextLabel, label);
+  		id.nextLabel = label;
 
-  		id.printedNextLabel = label;
+  		id.nextLabel = label;
   		id.isEvaluated = true;
   		return id;
   	}
@@ -701,7 +611,7 @@ public:
   		} else if(operation == "-") {
   			code = "    SUB AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
   		} else if(operation == "*") {
-  			code = "    MUL BL" + getComment(line) + "\n"; writeIntoTempFile(code);
+  			code = "    IMUL BL" + getComment(line) + "\n"; writeIntoTempFile(code);
   		} else if(operation == "%") {
   			code = "    DIV BL" + getComment(line) + "\n"; writeIntoTempFile(code);
   			code = "    XOR CX, CX" + getComment(line) + "\n"; writeIntoTempFile(code);
@@ -728,109 +638,94 @@ public:
 
   		if(operation == "<") {
   			code = "    CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "	JL " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "    JMP " + expr.printedFalseLabel + "\n"; writeIntoTempFile(code);
+  			code = "	JL " + expr.trueLabel + "\n"; writeIntoTempFile(code);
+  			code = "    JMP " + expr.falseLabel + "\n"; writeIntoTempFile(code);
   		} else if(operation == "<=") {
   			code = "	CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "	JLE " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "    JMP " + expr.printedFalseLabel + "\n"; writeIntoTempFile(code);
+  			code = "	JLE " + expr.trueLabel + "\n"; writeIntoTempFile(code);
+  			code = "    JMP " + expr.falseLabel + "\n"; writeIntoTempFile(code);
   		} else if(operation == ">") {
   			code = "    CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "	JG " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "    JMP " + expr.printedFalseLabel + "\n"; writeIntoTempFile(code);
+  			code = "	JG " + expr.trueLabel + "\n"; writeIntoTempFile(code);
+  			code = "    JMP " + expr.falseLabel + "\n"; writeIntoTempFile(code);
   		} else if(operation == ">=") {
   			code = "    CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "	JGE " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "    JMP " + expr.printedFalseLabel + "\n"; writeIntoTempFile(code);
+  			code = "	JGE " + expr.trueLabel + "\n"; writeIntoTempFile(code);
+  			code = "    JMP " + expr.falseLabel + "\n"; writeIntoTempFile(code);
   		} else if(operation == "==") {
   			code = "    CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "	JE " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "    JMP " + expr.printedFalseLabel + "\n"; writeIntoTempFile(code);
+  			code = "	JE " + expr.trueLabel + "\n"; writeIntoTempFile(code);
+  			code = "    JMP " + expr.falseLabel + "\n"; writeIntoTempFile(code);
   		} else if(operation == "!=") {
   			code = "    CMP AX, BX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "	JNE " + expr.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
-  			code = "    JMP " + expr.printedFalseLabel + "\n"; writeIntoTempFile(code);
+  			code = "	JNE " + expr.trueLabel + "\n"; writeIntoTempFile(code);
+  			code = "    JMP " + expr.falseLabel + "\n"; writeIntoTempFile(code);
   		}else {
   			debug("Relational operator not handled in the function generate relational code");
   		}		
   	}
   	void assignLogicalVariable(Identifier var, Identifier logicValue, std::string line) {
   		std::string code;
-  		code = "    " + logicValue.printedTrueLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    " + logicValue.trueLabel + ":\n"; writeIntoTempFile(code);
   		code = "    MOV AX, 1" + getComment(line) + "\n"; writeIntoTempFile(code);
   		code = "    MOV " + identifierAddress(var) + ", AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  		code = "    JMP " + logicValue.printedNextLabel + "\n"; writeIntoTempFile(code);
-  		code = "    " + logicValue.printedFalseLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    JMP " + logicValue.nextLabel + "\n"; writeIntoTempFile(code);
+  		code = "    " + logicValue.falseLabel + ":\n"; writeIntoTempFile(code);
   		code = "    MOV AX, 0" + getComment(line) + "\n"; writeIntoTempFile(code);
   		code = "    MOV " + identifierAddress(var) + ", AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  		code = "    " + logicValue.printedNextLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    " + logicValue.nextLabel + ":\n"; writeIntoTempFile(code);
   	}
-  	Identifier generateRelationalCodeForSimpleExpression(Identifier id, std::string line) {
-  		if(id.printedTrueLabel != "EMPTY") {
+  	Identifier generateRelationalCodeForSimpleExpression(Identifier id) {
+  		if(id.trueLabel != "EMPTY") {
   			return id;
   		}
 
   		std::string code;
   		Identifier newId = id;
   		newId.startLabel = generateLabel();
-  		newId.trueLabel = newId.printedTrueLabel = generateLabel();
-  		newId.falseLabel = newId.printedFalseLabel = generateLabel();
-  		newId.nextLabel = newId.printedNextLabel = generateLabel();
+  		newId.trueLabel = newId.trueLabel = generateLabel();
+  		newId.falseLabel = newId.falseLabel = generateLabel();
+  		newId.nextLabel = newId.nextLabel = generateLabel();
 
   		code = "	" + newId.startLabel + ":\n"; writeIntoTempFile(code);
   		if(id.isInStack) {
-  			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
+  			code = "    POP AX\n"; writeIntoTempFile(code);
   		} else {
-  			code = "    MOV AX, " + identifierAddress(id) + getComment(line) + "\n"; writeIntoTempFile(code);
+  			code = "    MOV AX, " + identifierAddress(id) + "\n"; writeIntoTempFile(code);
   		}
-  		code = "	CMP AX, 0" + getComment(line) + "\n"; writeIntoTempFile(code);
-  		code = "	JNE " + newId.printedTrueLabel + getComment(line) + "\n"; writeIntoTempFile(code);
-  		code = "    JMP " + newId.printedFalseLabel + "\n"; writeIntoTempFile(code);
+  		code = "	CMP AX, 0\n"; writeIntoTempFile(code);
+  		code = "	JNE " + newId.trueLabel + "\n"; writeIntoTempFile(code);
+  		code = "    JMP " + newId.falseLabel + "\n"; writeIntoTempFile(code);
 
   		return newId;		
   	}
   	Identifier generateLogicalCode(Identifier left, Identifier right, std::string line, std::string operation) {
   		Identifier id;
   		if (operation == "&&") {
-  			left.trueLabel = right.startLabel; changeLabelFromTemp(left.printedTrueLabel, left.trueLabel);
-  			left.falseLabel = right.nextLabel; changeLabelFromTemp(left.printedFalseLabel, left.falseLabel);
-
-  			id.startLabel = left.startLabel;
-  			id.trueLabel = right.trueLabel;
-  			id.falseLabel = right.falseLabel;
-  			id.nextLabel = right.nextLabel;
-  			id.printedTrueLabel = right.printedTrueLabel;
-  			id.printedFalseLabel = right.printedFalseLabel;
-  			id.printedNextLabel = right.printedNextLabel;
+  			changeLabelFromTempFromBottom(left.nextLabel, right.startLabel, true); left.nextLabel = right.startLabel;
+  			changeLabelFromTempFromBottom(left.trueLabel, right.startLabel, true); left.trueLabel = right.startLabel; 
+  			changeLabelFromTempFromBottom(left.falseLabel, right.falseLabel, true); left.falseLabel = right.falseLabel; 
   		} else if (operation == "||") {
-  			left.trueLabel = right.trueLabel; changeLabelFromTemp(left.printedTrueLabel, left.trueLabel);
-  			left.falseLabel = right.startLabel; changeLabelFromTemp(left.printedFalseLabel, left.falseLabel);
-
-  			id.startLabel = left.startLabel;
-  			id.trueLabel = right.trueLabel;
-  			id.falseLabel = right.falseLabel;
-  			id.nextLabel = right.nextLabel;
-  			id.printedTrueLabel = right.printedTrueLabel;
-  			id.printedFalseLabel = right.printedFalseLabel;
-  			id.printedNextLabel = right.printedNextLabel;
+  			changeLabelFromTempFromBottom(left.nextLabel, right.startLabel, true); left.nextLabel = right.startLabel;
+  			changeLabelFromTempFromBottom(left.trueLabel, right.trueLabel, true); left.trueLabel = right.trueLabel; 
+  			changeLabelFromTempFromBottom(left.falseLabel, right.startLabel, true); left.falseLabel = right.startLabel; 
   		} else {
   			debug("Logical operator not handled in the function generate logical code");
   		}
+  		id.startLabel = left.startLabel;
+  		id.trueLabel = right.trueLabel;
+  		id.falseLabel = right.falseLabel;
+  		id.nextLabel = right.nextLabel;		
   		return id;
   	}
   	Identifier generateLoopExpression(Identifier id, std::string line) {
-  		// for handling simple expression in loop
-  		//              or no expression in for loop
-
-  		if(id.printedTrueLabel != "EMPTY") {
+  		if(id.trueLabel != "EMPTY") {
   			return id;
   		}
-
-  		Identifier newId = generateRelationalCodeForSimpleExpression(id, line);
+  		Identifier newId = generateRelationalCodeForSimpleExpression(id);
   		if(id.isIncDec) {
   			newId.startLabel = id.startLabel;
   			newId.isIncDec = true;
-  			return newId;
   		}
   		return newId;
   	}
@@ -840,10 +735,10 @@ public:
   		Identifier newId = id;
   		newId.isIncDec = true;
   		newId.startLabel = generateLabel();
-  		newId.nextLabel = newId.printedNextLabel = generateLabel();
+  		newId.nextLabel = newId.nextLabel = generateLabel();
   		newId.incDecOp = op;
 
-  		code = "	JMP " + newId.printedNextLabel + "\n"; writeIntoTempFile(code);
+  		code = "	JMP " + newId.nextLabel + "\n"; writeIntoTempFile(code);
   		code = "	" + newId.startLabel + ":\n"; writeIntoTempFile(code);
   		if(id.isInStack) {
   			code = "    POP AX" + getComment(line) + "\n"; writeIntoTempFile(code);
@@ -852,8 +747,8 @@ public:
   		}
   		code = "    " + op + " AX, 1" + getComment(line) + "\n"; writeIntoTempFile(code);
   		code = "    MOV " + identifierAddress(id) + ", AX" + getComment(line) + "\n"; writeIntoTempFile(code);
-  		code = "    JMP " + newId.printedNextLabel + "\n"; writeIntoTempFile(code); newId.nextLabelLineCount = lineCount - 1;
-  		code = "    " + newId.printedNextLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    JMP " + newId.nextLabel + "\n"; writeIntoTempFile(code);
+  		code = "    " + newId.nextLabel + ":\n"; writeIntoTempFile(code);
   		return newId;
   	}
 
@@ -871,16 +766,16 @@ public:
   	// if else
   	void generateCodeAfterIfExpression(Identifier id) {
   		std::string code;
-  		code = "    " + id.printedTrueLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    " + id.trueLabel + ":\n"; writeIntoTempFile(code);
   	}
   	void generateCodeAfterIfStatement(Identifier id) {
   		std::string code;
-  		code = "    JMP " + id.printedNextLabel + "\n"; writeIntoTempFile(code);
-  		code = "    " + id.printedFalseLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    JMP " + id.nextLabel + "\n"; writeIntoTempFile(code);
+  		code = "    " + id.falseLabel + ":\n"; writeIntoTempFile(code);
   	}
   	void generateCodeAfterElseStatement(Identifier id) {
   		std::string code;
-  		code = "    " + id.printedNextLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    " + id.nextLabel + ":\n"; writeIntoTempFile(code);
   	}
 
   	// for loop
@@ -914,8 +809,8 @@ public:
 
   		// conditional expression
   		// code = "	JMP " + conditionalExpression.nextLabel + "\n"; writeIntoTempFile(code);
-  		code = "	" + conditionalExpression.printedFalseLabel + ":\n"; writeIntoTempFile(code);
-  		// code = "	" + conditionalExpression.printedNextLabel + ":\n"; writeIntoTempFile(code);
+  		code = "	" + conditionalExpression.falseLabel + ":\n"; writeIntoTempFile(code);
+  		// code = "	" + conditionalExpression.nextLabel + ":\n"; writeIntoTempFile(code);
   	}
 
   	// while loop
@@ -926,7 +821,7 @@ public:
   	void handleAfterWhileLoopExpression(Identifier conditionalExpression) {
   		std::string code;
   		code = "    JMP " + conditionalExpression.startLabel + "\n"; writeIntoTempFile(code);
-  		code = "    " + conditionalExpression.printedFalseLabel + ":\n"; writeIntoTempFile(code);
+  		code = "    " + conditionalExpression.falseLabel + ":\n"; writeIntoTempFile(code);
   	}
 
   	// function definition
