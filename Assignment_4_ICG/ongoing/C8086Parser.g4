@@ -12,6 +12,7 @@ options {
     #include <string>
     #include <cstdlib>
 	#include <regex>
+	#include <utility>
     #include "C8086Lexer.h"
 	#include "./headers/2105177_SymbolTable.h"
 	#include "./headers/util.cpp"
@@ -34,7 +35,6 @@ options {
 	int lineCount = 1;
 	std::string loopExpressionLabel = "EMPTY";
 	std::string loopStatementLabel = "EMPTY";
-	bool isScopeAllowed = true;
 	std::string currentFuncName = "EMPTY";
 	bool isReturned = false;
 	int pushCount = 0;
@@ -178,9 +178,10 @@ options {
 		std::string code;
 		code = "	;restore stack pointer\n"; writeIntoTempFile(code);
 		int count = getStackMemberCount();
-		for(int i = 0; i < count; i++) {
-			code = "    ADD SP, 2\n"; writeIntoTempFile(code);
-		}
+		// for(int i = 0; i < count; i++) {
+		// 	code = "    ADD SP, 2\n"; writeIntoTempFile(code);
+		// }
+		code = "    ADD SP, " + std::to_string(2*count); writeIntoTempFile(code);		
 		restoreBasePointer();		
 	}
 	SymbolInfo* lookupSymbol(std::string name) {
@@ -236,49 +237,7 @@ options {
 		std::string code = "    POP DX\n    POP CX\n    POP BX\n";
 		writeIntoTempFile(code);
 	}
-	void changeLabelFromTemp(std::string label, std::string newLabel) {
-		writeIntoTempFile(label + "->" + newLabel + "\n");
-		debug("changing label: "+label+" ,to: "+newLabel+"\n");
-		if (label == newLabel) return;
-
-		std::ifstream inputFile(tempFileName, std::ios::in);
-		if (!inputFile) {
-			std::cout << "Error opening tempFile.txt for reading" << std::endl;
-			return;
-		}
-
-		std::ostringstream buffer;
-		buffer << inputFile.rdbuf(); 
-		std::string content = buffer.str();
-		inputFile.close();
-
-		size_t pos = 0;
-		while ((pos = content.find(label, pos)) != std::string::npos) {
-			content.replace(pos, label.length(), newLabel);
-			pos += newLabel.length(); 
-			// break;
-		}
-
-		std::ofstream outputFile(tempFileName, std::ios::out | std::ios::trunc);
-		if (!outputFile) {
-			std::cout << "Error opening tempFile.txt for writing" << std::endl;
-			return;
-		}
-		outputFile << content;
-		outputFile.close();
-		writeIntoTempFile("\n");
-	}
-	void changeLabelFromTempFromBottom(std::string label, std::string newLabel, bool all = false) {
-		debug("Changing label: " + label + " to: " + newLabel + "\n");
-
-		if (label == newLabel) return;
-		std::ifstream inputFile(tempFileName);
-		std::vector<std::string> lines;
-		std::string line;
-		while (std::getline(inputFile, line)) {
-			lines.push_back(line);
-		}
-		inputFile.close();
+	vector<std::string> changeLabel(vector<std::string> lines, std::string label, std::string newLabel, bool all = false){
 		bool labelReplaced = false;
 
 		for (int i = static_cast<int>(lines.size()) - 1; i >= 0; --i) {
@@ -301,17 +260,202 @@ options {
 				if(!all) break;
 			}
 		}
-
 		if (!labelReplaced) {
 			std::cerr << "Label '" << label << "' not found\n";
-			return;
+			return lines;
 		}
+		return lines; 		
+	}
+	void changeLabelFromTemp(std::string label, std::string newLabel, bool all = false) {
+		debug("Changing label: " + label + " to: " + newLabel + "\n");
+
+		if (label == newLabel) return;
+		std::ifstream inputFile(tempFileName);
+		std::vector<std::string> lines;
+		std::string line;
+		while (std::getline(inputFile, line)) {
+			lines.push_back(line);
+		}
+		inputFile.close();
+
+		lines = changeLabel(lines,label,newLabel,all);
+
 		std::ofstream outputFile(tempFileName, std::ios::out | std::ios::trunc);
 		for (const auto& l : lines) {
 			outputFile << l << "\n";
 		}
 		outputFile.close();
 		writeIntoTempFile("\n"); 
+	}
+	
+	std::vector<std::string> removeComments(const std::vector<std::string>& lines) {
+		std::vector<std::string> result;
+
+		for (const std::string& line : lines) {
+			if (line.find_first_not_of(" \t") == std::string::npos) continue;
+			size_t leadingWsLen = line.find_first_not_of(" \t");
+			std::string leadingWhitespace = line.substr(0, leadingWsLen);
+			size_t commentPos = line.find(';');
+			std::string coreContent;
+			if (commentPos != std::string::npos) {
+				if (leadingWsLen != std::string::npos)
+					coreContent = line.substr(leadingWsLen, commentPos - leadingWsLen);
+			} else {
+				if (leadingWsLen != std::string::npos)
+					coreContent = line.substr(leadingWsLen);
+			}
+			size_t endPos = coreContent.find_last_not_of(" \t");
+			if (endPos != std::string::npos)
+				coreContent = coreContent.substr(0, endPos + 1);
+			else
+				coreContent.clear();
+			if (!coreContent.empty()) {
+				result.push_back(leadingWhitespace + coreContent);
+			}
+		}
+
+		return result;
+	}
+	bool isWhitespaceOrEmpty(const std::string& s) {
+		return s.find_first_not_of(" \t") == std::string::npos;
+	}
+	std::string toUpperTrimmed(const std::string& str) {
+		std::string result;
+		for (char ch : str) {
+			if (!std::isspace(static_cast<unsigned char>(ch)))
+				result += std::toupper(ch);
+		}
+		return result;
+	}
+	std::vector<std::string> optimizeAssembly(const std::vector<std::string>& lines) {
+		std::vector<std::string> result;
+
+		for (size_t i = 0; i < lines.size(); ++i) {
+			std::string line = lines[i];
+
+			std::istringstream issCurr(line);
+			std::string instrCurr, op1Curr, op2Curr;
+			issCurr >> instrCurr >> op1Curr;
+			if (issCurr.peek() == ',') issCurr.get();
+			issCurr >> op2Curr;
+
+			std::string upperInstrCurr = toUpperTrimmed(instrCurr);
+			std::string upperOp1Curr = toUpperTrimmed(op1Curr);
+			std::string upperOp2Curr = toUpperTrimmed(op2Curr);
+
+			if (i + 1 < lines.size() && !isWhitespaceOrEmpty(lines[i + 1])) {
+				std::istringstream issNext(lines[i + 1]);
+				std::string instrNext, op1Next, op2Next;
+				issNext >> instrNext >> op1Next;
+				if (issNext.peek() == ',') issNext.get();
+				issNext >> op2Next;
+
+				std::string upperInstrNext = toUpperTrimmed(instrNext);
+				std::string upperOp1Next = toUpperTrimmed(op1Next);
+				std::string upperOp2Next = toUpperTrimmed(op2Next);
+
+				bool redundantPushPop =
+					((upperInstrCurr == "PUSH" && upperInstrNext == "POP") ||
+					(upperInstrCurr == "POP" && upperInstrNext == "PUSH")) &&
+					(upperOp1Curr == upperOp1Next);
+
+				if (redundantPushPop) {
+					++i;
+					continue;
+				}
+
+				bool isRedundantMovPair =
+					upperInstrCurr == "MOV" && upperInstrNext == "MOV" &&
+					upperOp1Curr == upperOp2Next && upperOp2Curr == upperOp1Next;
+
+				if (isRedundantMovPair) {
+					++i;
+					continue;
+				}
+
+				if (upperInstrCurr == "MOV" && upperOp1Curr == "BX" && upperOp2Curr == "1") {
+					if (i + 2 < lines.size()) {
+						std::istringstream issNext2(lines[i + 2]);
+						std::string instrNext2, opNext2;
+						issNext2 >> instrNext2 >> opNext2;
+						std::string upperInstrNext2 = toUpperTrimmed(instrNext2);
+						if (upperInstrNext2 == "IMUL") {
+							i += 2;
+							continue;
+						}
+					}
+				}
+			}
+
+			if ((upperInstrCurr == "ADD" || upperInstrCurr == "SUB") && upperOp2Curr == "0") {
+				continue;
+			}
+
+			result.push_back(line);
+		}
+
+		return result;
+	}
+	std::vector<std::string> mergeConsecutiveLabels(std::vector<std::string> lines) {
+		std::vector<std::string> cleanedLines;
+		std::vector<std::string> labelGroup;
+		std::vector<std::pair<std::string, std::string>> change;
+
+		for (size_t i = 0; i < lines.size(); ++i) {
+			const std::string& line = lines[i];
+			std::string trimmed = line;
+			trimmed.erase(0, trimmed.find_first_not_of(" \t"));
+
+			if (!trimmed.empty() && trimmed.back() == ':' && trimmed.find(' ') == std::string::npos) {
+				labelGroup.push_back(trimmed.substr(0, trimmed.size() - 1));
+			} else {
+				if (labelGroup.size() > 1) {
+					cleanedLines.push_back(labelGroup[0] + ":");
+					for (size_t j = 1; j < labelGroup.size(); ++j) {
+						change.push_back(std::make_pair(labelGroup[j], labelGroup[0]));
+					}
+				} else if (labelGroup.size() == 1) {
+					cleanedLines.push_back(labelGroup[0] + ":");
+				}
+				labelGroup.clear();
+				cleanedLines.push_back(line);
+			}
+		}
+
+		if (!labelGroup.empty()) {
+			cleanedLines.push_back(labelGroup[0] + ":");
+			for (size_t j = 1; j < labelGroup.size(); ++j) {
+				change.push_back(std::make_pair(labelGroup[j], labelGroup[0]));
+			}
+		}
+
+		for (size_t i = 0; i < change.size(); ++i) {
+			cleanedLines = changeLabel(cleanedLines, change[i].first, change[i].second, true);
+		}
+
+		return cleanedLines;
+	}
+	void optimizeCode() {
+		// read lines from code file
+		std::ifstream inputFile(codeFileName);
+		std::vector<std::string> lines;
+		std::string line;
+		while (std::getline(inputFile, line)) {
+			lines.push_back(line);
+		}
+		inputFile.close();
+
+		lines = removeComments(lines);
+		lines = optimizeAssembly(lines);
+		lines = mergeConsecutiveLabels(lines);
+
+		// write to optcode file
+		std::ofstream outputFile(optCodeFileName, std::ios::out | std::ios::trunc);
+		for (const auto& l : lines) {
+			outputFile << l << "\n";
+		}
+		outputFile.close();
+		writeIntoTempFile("\n"); 		
 	}
 	void cleanFileFromNonText(const std::string& fileName) {
 		std::ifstream inputFile(fileName, std::ios::in | std::ios::binary);
@@ -327,11 +471,9 @@ options {
 
 		std::string cleaned;
 		for (char ch : content) {
-			// Keep printable ASCII (32–126), newline (10), tab (9), carriage return (13)
 			if ((ch >= 32 && ch <= 126) || ch == '\n' || ch == '\t' || ch == '\r') {
 				cleaned += ch;
 			}
-			// Skip all other characters (e.g., '\0', control chars)
 		}
 
 		std::ofstream outputFile(fileName, std::ios::out | std::ios::trunc | std::ios::binary);
@@ -364,7 +506,6 @@ options {
 		}
 		return block.str();
 	}
-
 	void moveMainProcAfterCode(const std::string& filename) {
 		std::ifstream fileIn(filename);
 		if (!fileIn.is_open()) {
@@ -521,7 +662,7 @@ options {
 		code = "    JMP " + id.startLabel + "\n"; writeIntoTempFile(code);
 		code = "    " + label + ":\n"; writeIntoTempFile(code);
 	
-		changeLabelFromTempFromBottom(id.nextLabel, label);
+		changeLabelFromTemp(id.nextLabel, label);
 		id.nextLabel = label;
 
 		id.nextLabel = label;
@@ -662,13 +803,13 @@ options {
 	Identifier generateLogicalCode(Identifier left, Identifier right, std::string line, std::string operation) {
 		Identifier id;
 		if (operation == "&&") {
-			changeLabelFromTempFromBottom(left.nextLabel, right.startLabel, true); left.nextLabel = right.startLabel;
-			changeLabelFromTempFromBottom(left.trueLabel, right.startLabel, true); left.trueLabel = right.startLabel; 
-			changeLabelFromTempFromBottom(left.falseLabel, right.falseLabel, true); left.falseLabel = right.falseLabel; 
+			changeLabelFromTemp(left.nextLabel, right.startLabel, true); left.nextLabel = right.startLabel;
+			changeLabelFromTemp(left.trueLabel, right.startLabel, true); left.trueLabel = right.startLabel; 
+			changeLabelFromTemp(left.falseLabel, right.falseLabel, true); left.falseLabel = right.falseLabel; 
 		} else if (operation == "||") {
-			changeLabelFromTempFromBottom(left.nextLabel, right.startLabel, true); left.nextLabel = right.startLabel;
-			changeLabelFromTempFromBottom(left.trueLabel, right.trueLabel, true); left.trueLabel = right.trueLabel; 
-			changeLabelFromTempFromBottom(left.falseLabel, right.startLabel, true); left.falseLabel = right.startLabel; 
+			changeLabelFromTemp(left.nextLabel, right.startLabel, true); left.nextLabel = right.startLabel;
+			changeLabelFromTemp(left.trueLabel, right.trueLabel, true); left.trueLabel = right.trueLabel; 
+			changeLabelFromTemp(left.falseLabel, right.startLabel, true); left.falseLabel = right.startLabel; 
 		} else {
 			debug("Logical operator not handled in the function generate logical code");
 		}
@@ -830,6 +971,7 @@ start :
         finalizeTempFile();
 		moveMainProcAfterCode(tempFileName);
         mergeTempFileToCodeFile();
+		optimizeCode();
 		cleanFileFromNonText(codeFileName);
 		cleanFileFromNonText(optCodeFileName);
 		cleanFileFromNonText(tempFileName);
