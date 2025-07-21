@@ -142,22 +142,23 @@ options {
 		}
 		return upperStr;
 	}	
+	int increaseStackMemberCount() {
+		int count = symbolTable.getStackMemberCount();
+		count = count + 1;
+		symbolTable.setStackMemberCount(count);
+		return count;
+	}	
 	void preserveBasePointer() {
 		std::string code;
 		code = "	;preserve base pointer\n"; writeIntoTempFile(code);
 		code = "    PUSH BP\n    MOV BP, SP\n"; writeIntoTempFile(code);
+		// increaseStackMemberCount();
 	}
 	void restoreBasePointer() {
 		std::string code;
 		code = "	;restore base pointer\n"; writeIntoTempFile(code);
 		code = "    POP BP\n"; writeIntoTempFile(code);
 	}	
-	int increaseStackMemberCount() {
-		int count = symbolTable.getStackMemberCount();
-		count = count + 1;
-		symbolTable.setStackMemberCount(count);
-		return count;
-	}
 	int getStackMemberCount() {
 		return symbolTable.getStackMemberCount();
 	}
@@ -446,14 +447,14 @@ options {
 			symbol->id.isGlobal = false;
 			if(id.isArray) {
 				for(int i = 0; i < id.arraySize; i++) {
-					symbol->id.stackOffset = 2 * getStackMemberCount();
 					increaseStackMemberCount();
+					symbol->id.stackOffset = 2 * getStackMemberCount();
 					std::string code = "    SUB SP, 2"+ getComment(line) +"\n";
 					writeIntoTempFile(code);
 				}
 			} else {
-				symbol->id.stackOffset = 2 * getStackMemberCount();
 				increaseStackMemberCount();
+				symbol->id.stackOffset = 2 * getStackMemberCount();
 				std::string code = "    SUB SP, 2" + getComment(line) + "\n";
 				writeIntoTempFile(code);
 			}
@@ -1041,15 +1042,7 @@ logic_expression returns [Identifier id] :
 		$re1.id = generateRelationalCodeForSimpleExpression($re1.id);
 	} LOGICOP re2 = rel_expression {
 		$re2.id = generateRelationalCodeForSimpleExpression($re2.id);
-
-		// debug("starting to generate logical code\n");
-		// debug("left identifier:\n");
-		// printIdentifierLabel($re1.id);
-		// debug("\n\nright Identifier:\n");
-		// printIdentifierLabel($re2.id);
 		$id = generateLogicalCode($re1.id, $re2.id, to_string($LOGICOP->getLine()), $LOGICOP->getText());
-		// debug("\nreceived merged logical identifer is:\n");
-		// printIdentifierLabel($id);
     }
 ;
 

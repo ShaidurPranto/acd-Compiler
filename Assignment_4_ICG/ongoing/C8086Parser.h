@@ -183,22 +183,23 @@ public:
   		}
   		return upperStr;
   	}	
+  	int increaseStackMemberCount() {
+  		int count = symbolTable.getStackMemberCount();
+  		count = count + 1;
+  		symbolTable.setStackMemberCount(count);
+  		return count;
+  	}	
   	void preserveBasePointer() {
   		std::string code;
   		code = "	;preserve base pointer\n"; writeIntoTempFile(code);
   		code = "    PUSH BP\n    MOV BP, SP\n"; writeIntoTempFile(code);
+  		// increaseStackMemberCount();
   	}
   	void restoreBasePointer() {
   		std::string code;
   		code = "	;restore base pointer\n"; writeIntoTempFile(code);
   		code = "    POP BP\n"; writeIntoTempFile(code);
   	}	
-  	int increaseStackMemberCount() {
-  		int count = symbolTable.getStackMemberCount();
-  		count = count + 1;
-  		symbolTable.setStackMemberCount(count);
-  		return count;
-  	}
   	int getStackMemberCount() {
   		return symbolTable.getStackMemberCount();
   	}
@@ -487,14 +488,14 @@ public:
   			symbol->id.isGlobal = false;
   			if(id.isArray) {
   				for(int i = 0; i < id.arraySize; i++) {
-  					symbol->id.stackOffset = 2 * getStackMemberCount();
   					increaseStackMemberCount();
+  					symbol->id.stackOffset = 2 * getStackMemberCount();
   					std::string code = "    SUB SP, 2"+ getComment(line) +"\n";
   					writeIntoTempFile(code);
   				}
   			} else {
-  				symbol->id.stackOffset = 2 * getStackMemberCount();
   				increaseStackMemberCount();
+  				symbol->id.stackOffset = 2 * getStackMemberCount();
   				std::string code = "    SUB SP, 2" + getComment(line) + "\n";
   				writeIntoTempFile(code);
   			}

@@ -1967,15 +1967,7 @@ C8086Parser::Logic_expressionContext* C8086Parser::logic_expression() {
       antlrcpp::downCast<Logic_expressionContext *>(_localctx)->re2 = rel_expression();
 
       		antlrcpp::downCast<Logic_expressionContext *>(_localctx)->re2->id = generateRelationalCodeForSimpleExpression(antlrcpp::downCast<Logic_expressionContext *>(_localctx)->re2->id);
-
-      		// debug("starting to generate logical code\n");
-      		// debug("left identifier:\n");
-      		// printIdentifierLabel(antlrcpp::downCast<Logic_expressionContext *>(_localctx)->re1->id);
-      		// debug("\n\nright Identifier:\n");
-      		// printIdentifierLabel(antlrcpp::downCast<Logic_expressionContext *>(_localctx)->re2->id);
       		antlrcpp::downCast<Logic_expressionContext *>(_localctx)->id =  generateLogicalCode(antlrcpp::downCast<Logic_expressionContext *>(_localctx)->re1->id, antlrcpp::downCast<Logic_expressionContext *>(_localctx)->re2->id, to_string(antlrcpp::downCast<Logic_expressionContext *>(_localctx)->logicopToken->getLine()), antlrcpp::downCast<Logic_expressionContext *>(_localctx)->logicopToken->getText());
-      		// debug("\nreceived merged logical identifer is:\n");
-      		// printIdentifierLabel(_localctx->id);
           
       break;
     }
@@ -2498,14 +2490,14 @@ C8086Parser::FactorContext* C8086Parser::factor() {
 
       		std::string code;
       		std::string line = std::to_string(antlrcpp::downCast<FactorContext *>(_localctx)->idToken->getLine());
-      		preserveTemporaryRegisters();
+      		// preserveTemporaryRegisters();
       		code = "    CALL " + antlrcpp::downCast<FactorContext *>(_localctx)->idToken->getText() + getComment(line) + "\n"; writeIntoTempFile(code);
       		SymbolInfo* symbol = lookupSymbol(antlrcpp::downCast<FactorContext *>(_localctx)->idToken->getText());
       		if(toUpper(symbol->getType()) != "VOID") {
       			code = "    PUSH AX\n"; writeIntoTempFile(code);
       			_localctx->id.isInStack = true;
       		}
-      		restoreTemporaryRegisters();
+      		// restoreTemporaryRegisters();
       	
       break;
     }
